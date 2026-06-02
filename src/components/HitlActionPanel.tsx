@@ -17,11 +17,10 @@ interface ActionTemplate {
 interface HitlActionPanelProps {
   eventId: string
   category: string
-  currentStatus: string
   onStatusChange?: () => void
 }
 
-export function HitlActionPanel({ eventId, category, currentStatus: _currentStatus, onStatusChange }: HitlActionPanelProps) {
+export function HitlActionPanel({ eventId, category, onStatusChange }: HitlActionPanelProps) {
   const [templates, setTemplates] = useState<ActionTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [executing, setExecuting] = useState<Record<string, boolean>>({})

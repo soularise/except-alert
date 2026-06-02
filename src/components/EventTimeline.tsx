@@ -37,6 +37,10 @@ export function EventTimeline({ filters, onRecentCount }: EventTimelineProps) {
   const newestReceivedAt = useRef<string | null>(null)
 
   const fetchInitial = useCallback(async () => {
+    setLoading(true)
+    setEvents([])
+    setNextCursor(null)
+    newestReceivedAt.current = null
     try {
       const res = await fetch(buildUrl(filters))
       if (!res.ok) throw new Error('Failed to fetch events')
@@ -88,10 +92,7 @@ export function EventTimeline({ filters, onRecentCount }: EventTimelineProps) {
   }, [filters, onRecentCount])
 
   useEffect(() => {
-    setLoading(true)
-    setEvents([])
-    setNextCursor(null)
-    newestReceivedAt.current = null
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchInitial()
   }, [fetchInitial])
 

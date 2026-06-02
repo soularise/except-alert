@@ -193,7 +193,6 @@ export function EventDetail({ eventId }: { eventId: string }) {
       <HitlActionPanel
         eventId={event.id}
         category={event.category}
-        currentStatus={event.status ?? 'open'}
         onStatusChange={() => {
           fetch(`/api/events/${eventId}`)
             .then((res) => {
