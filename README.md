@@ -29,6 +29,24 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
+## Docker
+
+The full stack (ExceptAlert + Relay + Postgres) is managed via `docker-compose.yml` in this repo.
+
+```bash
+docker compose up --build
+```
+
+### Database migrations
+
+Migrations must be applied before the app can serve requests. Run them against the target database:
+
+```bash
+DATABASE_URL=postgres://relay:relay@localhost:5432/relay npx drizzle-kit migrate
+```
+
+When running via Docker Compose, apply migrations against the exposed Postgres port (5432) before or after `docker compose up`.
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
