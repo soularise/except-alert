@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/table'
 import { SeverityBadge } from '@/components/SeverityBadge'
 import { StatusBadge } from '@/components/StatusBadge'
+import { HitlActionPanel } from '@/components/HitlActionPanel'
 
 interface EventData {
   id: string
@@ -187,6 +188,22 @@ export function EventDetail({ eventId }: { eventId: string }) {
           </div>
         </CardContent>
       </Card>
+
+      {/* HITL Actions */}
+      <HitlActionPanel
+        eventId={event.id}
+        category={event.category}
+        currentStatus={event.status ?? 'open'}
+        onStatusChange={() => {
+          fetch(`/api/events/${eventId}`)
+            .then((res) => {
+              if (!res.ok) throw new Error('Failed to reload event')
+              return res.json() as Promise<EventDetailData>
+            })
+            .then(setData)
+            .catch(() => {})
+        }}
+      />
 
       {/* Normalized fields */}
       <Card>
