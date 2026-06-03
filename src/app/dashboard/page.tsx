@@ -20,8 +20,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   }
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-8">
+    <div className="px-6 py-6">
       <DashboardClient initialFilters={filters} />
-    </main>
+    </div>
   )
 }

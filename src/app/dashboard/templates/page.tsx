@@ -179,7 +179,7 @@ export default function TemplatesPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-8">
+    <div className="px-6 py-6">
       <div className="mb-6 flex items-start justify-between">
         <div>
           <h1 className="text-xl font-semibold">Action Templates</h1>
@@ -363,6 +363,6 @@ export default function TemplatesPage() {
           </Form>
         </DialogContent>
       </Dialog>
-    </main>
+    </div>
   )
 }
