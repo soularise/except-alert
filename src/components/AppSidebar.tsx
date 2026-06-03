@@ -18,9 +18,9 @@ export function AppSidebar() {
   }
 
   return (
-    <aside className="flex w-60 flex-col border-r border-zinc-800 bg-zinc-900">
+    <aside className="flex w-60 flex-col border-r border-sidebar-border bg-sidebar">
       <div className="px-4 py-5">
-        <p className="text-sm font-semibold text-white">ExceptAlert</p>
+        <p className="text-sm font-semibold text-sidebar-foreground">ExceptAlert</p>
         <p className="text-xs text-zinc-400">Event monitor</p>
       </div>
 
