@@ -2,18 +2,28 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, FileCode2 } from 'lucide-react'
+import { LayoutDashboard, FileCode2, BarChart2, Settings } from 'lucide-react'
 
 const navItems = [
   { label: 'Events', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Templates', href: '/dashboard/templates', icon: FileCode2 },
+  { label: 'Baselines', href: '/dashboard/baselines', icon: BarChart2 },
+  { label: 'Settings', href: '/dashboard/settings', icon: Settings },
 ]
 
 export function AppSidebar() {
   const pathname = usePathname()
 
   function isActive(href: string) {
-    if (href === '/dashboard') return pathname === '/dashboard' || (pathname.startsWith('/dashboard/') && !pathname.startsWith('/dashboard/templates'))
+    if (href === '/dashboard') {
+      return (
+        pathname === '/dashboard' ||
+        (pathname.startsWith('/dashboard/') &&
+          !pathname.startsWith('/dashboard/templates') &&
+          !pathname.startsWith('/dashboard/baselines') &&
+          !pathname.startsWith('/dashboard/settings'))
+      )
+    }
     return pathname.startsWith(href)
   }
 
