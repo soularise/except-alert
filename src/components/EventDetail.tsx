@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -102,20 +101,13 @@ export function EventDetail({ eventId }: { eventId: string }) {
 
   if (loading) {
     return (
-      <main className="mx-auto w-full max-w-4xl px-4 py-8">
-        <p className="text-sm text-muted-foreground">Loading event…</p>
-      </main>
+      <p className="text-sm text-muted-foreground">Loading event…</p>
     )
   }
 
   if (error || !data) {
     return (
-      <main className="mx-auto w-full max-w-4xl px-4 py-8">
-        <Link href="/dashboard" className="text-sm text-muted-foreground hover:underline">
-          &larr; Back to dashboard
-        </Link>
-        <p className="mt-4 text-sm text-destructive">{error ?? 'Event not found'}</p>
-      </main>
+      <p className="text-sm text-destructive">{error ?? 'Event not found'}</p>
     )
   }
 
@@ -131,12 +123,9 @@ export function EventDetail({ eventId }: { eventId: string }) {
   }
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-8 flex flex-col gap-6">
+    <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex flex-col gap-3">
-        <Link href="/dashboard" className="text-sm text-muted-foreground hover:underline w-fit">
-          &larr; Back to dashboard
-        </Link>
         <h1 className="text-2xl font-semibold tracking-tight">{event.title}</h1>
         <div className="flex flex-wrap items-center gap-2">
           <SeverityBadge severity={event.severity} />
@@ -305,6 +294,6 @@ export function EventDetail({ eventId }: { eventId: string }) {
           )}
         </CardContent>
       </Card>
-    </main>
+    </div>
   )
 }
