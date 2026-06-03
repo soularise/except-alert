@@ -11,7 +11,6 @@ interface DashboardClientProps {
 
 export function DashboardClient({ initialFilters }: DashboardClientProps) {
   const [recentCount, setRecentCount] = useState<number>(0)
-  const [filters] = useState<Filters>(initialFilters)
 
   return (
     <div className="flex flex-col gap-6">
@@ -27,9 +26,9 @@ export function DashboardClient({ initialFilters }: DashboardClientProps) {
         )}
       </div>
 
-      <FilterBar filters={filters} />
+      <FilterBar filters={initialFilters} />
 
-      <EventTimeline filters={filters} onRecentCount={setRecentCount} />
+      <EventTimeline filters={initialFilters} onRecentCount={setRecentCount} />
     </div>
   )
 }

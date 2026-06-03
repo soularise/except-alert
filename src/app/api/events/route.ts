@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { events } from '@/lib/db/schema'
-import { and, eq, lt, desc, count, sql } from 'drizzle-orm'
+import { and, eq, lt, gte, desc, count } from 'drizzle-orm'
 
 const VALID_SEVERITIES = new Set(['critical', 'error', 'warning', 'info'])
 const VALID_STATUSES = new Set(['open', 'acknowledged', 'resolved', 'dismissed'])
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
     const [recentResult] = await db
       .select({ value: count() })
       .from(events)
-      .where(sql`${events.receivedAt} >= ${sixtySecondsAgo}`)
+      .where(gte(events.receivedAt, sixtySecondsAgo))
 
     const recentCount = recentResult?.value ?? 0
 
