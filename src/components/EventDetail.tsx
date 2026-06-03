@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -210,14 +210,14 @@ export function EventDetail({ eventId }: { eventId: string }) {
                 ['Tags', JSON.stringify(event.tags)],
               ] as [string, string][]
             ).map(([label, value]) => (
-              <>
-                <dt key={`dt-${label}`} className="font-medium text-muted-foreground whitespace-nowrap">
+              <Fragment key={label}>
+                <dt className="font-medium text-muted-foreground whitespace-nowrap">
                   {label}
                 </dt>
-                <dd key={`dd-${label}`} className="text-foreground break-words">
+                <dd className="text-foreground break-words">
                   {value}
                 </dd>
-              </>
+              </Fragment>
             ))}
           </dl>
         </CardContent>
