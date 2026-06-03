@@ -1,6 +1,7 @@
 import {
   bigserial,
   boolean,
+  integer,
   jsonb,
   pgTable,
   text,
@@ -81,4 +82,19 @@ export const actions = pgTable('actions', {
   errorInfo: jsonb('error_info'),
   executedAt: timestamptz('executed_at'),
   createdAt: timestamptz('created_at').defaultNow(),
+})
+
+export const baselines = pgTable('baselines', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  category: text('category').notNull(),
+  threshold: integer('threshold').notNull(),
+  windowMinutes: integer('window_minutes').notNull(),
+  lastAlertedAt: timestamptz('last_alerted_at'),
+  createdAt: timestamptz('created_at').notNull().defaultNow(),
+})
+
+export const settings = pgTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: timestamptz('updated_at').notNull().defaultNow(),
 })
