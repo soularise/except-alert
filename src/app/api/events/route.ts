@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { events } from '@/lib/db/schema'
 import { and, eq, lt, gte, desc, count } from 'drizzle-orm'
+import { evaluateBaselines } from '@/lib/baselines'
 
 const VALID_SEVERITIES = new Set(['critical', 'error', 'warning', 'info'])
 const VALID_STATUSES = new Set(['open', 'acknowledged', 'resolved', 'dismissed'])
@@ -73,6 +74,10 @@ export async function GET(request: NextRequest) {
       receivedAt: row.receivedAt.toISOString(),
       occurredAt: row.occurredAt.toISOString(),
     }))
+
+    evaluateBaselines().catch((err) =>
+      console.error('[events] baseline evaluation error:', err)
+    )
 
     return NextResponse.json({ events: responseEvents, nextCursor, recentCount })
   } catch {
