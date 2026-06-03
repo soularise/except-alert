@@ -13,7 +13,7 @@ export function AppSidebar() {
   const pathname = usePathname()
 
   function isActive(href: string) {
-    if (href === '/dashboard') return pathname === '/dashboard' || pathname.startsWith('/dashboard/') && !pathname.startsWith('/dashboard/templates')
+    if (href === '/dashboard') return pathname === '/dashboard' || (pathname.startsWith('/dashboard/') && !pathname.startsWith('/dashboard/templates'))
     return pathname.startsWith(href)
   }
 
