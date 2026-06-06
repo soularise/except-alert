@@ -54,9 +54,11 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // TODO(auth): replace with session tenant once auth is wired
+    const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000001'
     const [created] = await db
       .insert(actionTemplates)
-      .values({ category, label, config })
+      .values({ tenantId: DEFAULT_TENANT_ID, category, label, config })
       .returning()
 
     return NextResponse.json({ template: created }, { status: 201 })

@@ -97,6 +97,7 @@ export async function executeAction(
   const [inserted] = await db
     .insert(actions)
     .values({
+      tenantId: event.tenantId,
       eventId,
       templateId,
       label: template.label,

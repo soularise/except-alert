@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { settings } from '@/lib/db/schema'
 
 export async function GET() {
+  // TODO(auth): replace with session tenant once auth is wired
+  const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000001'
   try {
     const [row] = await db
       .select()
       .from(settings)
-      .where(eq(settings.key, 'slack_webhook_url'))
+      .where(and(eq(settings.tenantId, DEFAULT_TENANT_ID), eq(settings.key, 'slack_webhook_url')))
       .limit(1)
     return NextResponse.json({ slack_webhook_url: row?.value ?? null })
   } catch {
@@ -31,11 +33,13 @@ export async function PATCH(request: NextRequest) {
   }
 
   try {
+    // TODO(auth): replace with session tenant once auth is wired
+    const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000001'
     await db
       .insert(settings)
-      .values({ key: 'slack_webhook_url', value: slack_webhook_url })
+      .values({ tenantId: DEFAULT_TENANT_ID, key: 'slack_webhook_url', value: slack_webhook_url })
       .onConflictDoUpdate({
-        target: settings.key,
+        target: [settings.tenantId, settings.key],
         set: { value: slack_webhook_url, updatedAt: new Date() },
       })
     return NextResponse.json({ slack_webhook_url })

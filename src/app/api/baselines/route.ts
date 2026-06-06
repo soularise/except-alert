@@ -37,9 +37,11 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // TODO(auth): replace with session tenant once auth is wired
+    const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000001'
     const [created] = await db
       .insert(baselines)
-      .values({ category, threshold, windowMinutes: window_minutes })
+      .values({ tenantId: DEFAULT_TENANT_ID, category, threshold, windowMinutes: window_minutes })
       .returning()
     return NextResponse.json({ baseline: created }, { status: 201 })
   } catch {
