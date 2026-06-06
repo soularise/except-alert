@@ -1,30 +1,42 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { LayoutDashboard, FileCode2, BarChart2, Settings } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { LayoutDashboard, FileCode2, BarChart2, Settings, LogOut } from 'lucide-react'
+import { authClient } from '@/lib/auth-client'
 
-const navItems = [
-  { label: 'Events', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Templates', href: '/dashboard/templates', icon: FileCode2 },
-  { label: 'Baselines', href: '/dashboard/baselines', icon: BarChart2 },
-  { label: 'Settings', href: '/dashboard/settings', icon: Settings },
-]
+interface AppSidebarProps {
+  slug: string
+}
 
-export function AppSidebar() {
+export function AppSidebar({ slug }: AppSidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
+  const base = `/${slug}`
+
+  const navItems = [
+    { label: 'Events',    href: `${base}/dashboard`,  icon: LayoutDashboard },
+    { label: 'Templates', href: `${base}/templates`,  icon: FileCode2 },
+    { label: 'Baselines', href: `${base}/baselines`,  icon: BarChart2 },
+    { label: 'Settings',  href: `${base}/settings`,   icon: Settings },
+  ]
 
   function isActive(href: string) {
-    if (href === '/dashboard') {
+    if (href === `${base}/dashboard`) {
       return (
-        pathname === '/dashboard' ||
-        (pathname.startsWith('/dashboard/') &&
-          !pathname.startsWith('/dashboard/templates') &&
-          !pathname.startsWith('/dashboard/baselines') &&
-          !pathname.startsWith('/dashboard/settings'))
+        pathname === href ||
+        (pathname.startsWith(`${base}/dashboard/`) &&
+          !pathname.includes('/templates') &&
+          !pathname.includes('/baselines') &&
+          !pathname.includes('/settings'))
       )
     }
     return pathname.startsWith(href)
+  }
+
+  async function handleSignOut() {
+    await authClient.signOut()
+    router.push('/login')
   }
 
   return (
@@ -50,6 +62,16 @@ export function AppSidebar() {
           </Link>
         ))}
       </nav>
+
+      <div className="mt-auto px-2 pb-4">
+        <button
+          onClick={handleSignOut}
+          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-300"
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          Sign out
+        </button>
+      </div>
     </aside>
   )
 }
