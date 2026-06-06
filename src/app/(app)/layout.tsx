@@ -1,0 +1,14 @@
+import { auth } from '@/lib/auth'
+import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
+
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  if (process.env.EXCEPTALERT_AUTH_DISABLED === 'true') {
+    return <>{children}</>
+  }
+
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session) redirect('/login')
+
+  return <>{children}</>
+}
