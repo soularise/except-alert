@@ -15,6 +15,7 @@ import {
 import { SeverityBadge } from '@/components/SeverityBadge'
 import { StatusBadge } from '@/components/StatusBadge'
 import { HitlActionPanel } from '@/components/HitlActionPanel'
+import { useTenant } from '@/components/TenantProvider'
 
 interface EventData {
   id: string
@@ -64,13 +65,14 @@ function formatDateTime(isoString: string): string {
 }
 
 export function EventDetail({ eventId }: { eventId: string }) {
+  const { tenant } = useTenant()
   const [data, setData] = useState<EventDetailData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [updating, setUpdating] = useState(false)
 
   useEffect(() => {
-    fetch(`/api/events/${eventId}`)
+    fetch(`/api/${tenant.slug}/events/${eventId}`)
       .then((res) => {
         if (!res.ok) throw new Error(res.status === 404 ? 'Event not found' : 'Failed to load event')
         return res.json() as Promise<EventDetailData>
@@ -78,13 +80,13 @@ export function EventDetail({ eventId }: { eventId: string }) {
       .then(setData)
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false))
-  }, [eventId])
+  }, [eventId, tenant.slug])
 
   async function updateStatus(status: string) {
     if (!data) return
     setUpdating(true)
     try {
-      const res = await fetch(`/api/events/${eventId}`, {
+      const res = await fetch(`/api/${tenant.slug}/events/${eventId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
@@ -183,7 +185,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
         eventId={event.id}
         category={event.category}
         onStatusChange={() => {
-          fetch(`/api/events/${eventId}`)
+          fetch(`/api/${tenant.slug}/events/${eventId}`)
             .then((res) => {
               if (!res.ok) throw new Error('Failed to reload event')
               return res.json() as Promise<EventDetailData>

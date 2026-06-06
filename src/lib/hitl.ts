@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { events, actionTemplates, actions } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
+import { sameTenant } from '@/lib/tenant-access'
 
 type EventRow = typeof events.$inferSelect
 
@@ -15,14 +16,24 @@ function renderTemplate(template: string, event: EventRow): string {
 }
 
 export async function executeAction(
+  tenantId: string,
   eventId: string,
   templateId: string
 ): Promise<{ success: boolean; actionId: string; alreadyExecuted: boolean; error?: string }> {
-  const [event] = await db.select().from(events).where(eq(events.id, eventId)).limit(1)
+  const [event] = await db
+    .select()
+    .from(events)
+    .where(and(eq(events.id, eventId), eq(events.tenantId, tenantId)))
+    .limit(1)
   if (!event) throw new Error('Event not found')
 
-  const [template] = await db.select().from(actionTemplates).where(eq(actionTemplates.id, templateId)).limit(1)
+  const [template] = await db
+    .select()
+    .from(actionTemplates)
+    .where(and(eq(actionTemplates.id, templateId), eq(actionTemplates.tenantId, tenantId)))
+    .limit(1)
   if (!template) throw new Error('Template not found')
+  if (!sameTenant(event.tenantId, template.tenantId)) throw new Error('Template not found')
 
   const idempotencyKey = `${eventId}:${templateId}`
 
@@ -113,7 +124,7 @@ export async function executeAction(
     await db
       .update(events)
       .set({ status: 'acknowledged' })
-      .where(and(eq(events.id, eventId), eq(events.status, 'open')))
+      .where(and(eq(events.id, eventId), eq(events.tenantId, tenantId), eq(events.status, 'open')))
   }
 
   return {

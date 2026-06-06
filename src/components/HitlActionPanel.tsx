@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { useTenant } from '@/components/TenantProvider'
 
 interface ActionTemplate {
   id: string
@@ -21,25 +22,26 @@ interface HitlActionPanelProps {
 }
 
 export function HitlActionPanel({ eventId, category, onStatusChange }: HitlActionPanelProps) {
+  const { tenant } = useTenant()
   const [templates, setTemplates] = useState<ActionTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [executing, setExecuting] = useState<Record<string, boolean>>({})
   const [results, setResults] = useState<Record<string, { alreadyExecuted?: boolean; error?: string; success?: boolean }>>({})
 
   useEffect(() => {
-    fetch('/api/templates')
+    fetch(`/api/${tenant.slug}/templates`)
       .then((res) => res.json() as Promise<{ templates: ActionTemplate[] }>)
       .then(({ templates: all }) => setTemplates(all.filter((t) => t.category === category)))
       .catch(() => setTemplates([]))
       .finally(() => setLoading(false))
-  }, [category])
+  }, [category, tenant.slug])
 
   async function handleAction(templateId: string) {
     setExecuting((prev) => ({ ...prev, [templateId]: true }))
     setResults((prev) => ({ ...prev, [templateId]: {} }))
 
     try {
-      const res = await fetch(`/api/events/${eventId}/actions`, {
+      const res = await fetch(`/api/${tenant.slug}/events/${eventId}/actions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ templateId }),
@@ -84,8 +86,8 @@ export function HitlActionPanel({ eventId, category, onStatusChange }: HitlActio
         {templates.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No actions configured for this category.{' '}
-            <Link href="/dashboard/templates" className="underline hover:text-foreground">
-              Add one &rarr;
+            <Link href={`/${tenant.slug}/templates`} className="underline hover:text-foreground">
+              Add one
             </Link>
           </p>
         ) : (

@@ -26,7 +26,7 @@ export default async function TenantLayout({
     if (!tenant) notFound()
     return (
       <div className="flex h-full">
-        <AppSidebar slug={slug} />
+        <AppSidebar slug={slug} authDisabled />
         <main className="flex-1 overflow-y-auto">
           <TenantProvider tenant={tenant} role="owner">
             {children}

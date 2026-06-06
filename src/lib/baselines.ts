@@ -3,14 +3,17 @@ import { db } from '@/lib/db'
 import { baselines, events, settings } from '@/lib/db/schema'
 import { sendSlackAlert } from '@/lib/slack'
 
-export async function evaluateBaselines(): Promise<void> {
-  const allBaselines = await db.select().from(baselines)
+export async function evaluateBaselines(tenantId: string): Promise<void> {
+  const allBaselines = await db
+    .select()
+    .from(baselines)
+    .where(eq(baselines.tenantId, tenantId))
   if (allBaselines.length === 0) return
 
   const [slackSetting] = await db
     .select()
     .from(settings)
-    .where(eq(settings.key, 'slack_webhook_url'))
+    .where(and(eq(settings.tenantId, tenantId), eq(settings.key, 'slack_webhook_url')))
     .limit(1)
   const slackUrl = slackSetting?.value ?? null
 
@@ -30,6 +33,7 @@ export async function evaluateBaselines(): Promise<void> {
       .from(events)
       .where(
         and(
+          eq(events.tenantId, tenantId),
           eq(events.category, baseline.category),
           gte(events.receivedAt, windowStart)
         )
@@ -57,6 +61,6 @@ export async function evaluateBaselines(): Promise<void> {
     await db
       .update(baselines)
       .set({ lastAlertedAt: now })
-      .where(eq(baselines.id, baseline.id))
+      .where(and(eq(baselines.id, baseline.id), eq(baselines.tenantId, tenantId)))
   }
 }

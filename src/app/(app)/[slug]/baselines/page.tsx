@@ -26,6 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { useTenant } from '@/components/TenantProvider'
 
 function formatLastAlerted(iso: string | null): string {
   if (!iso) return 'Never'
@@ -55,6 +56,7 @@ interface Baseline {
 }
 
 export default function BaselinesPage() {
+  const { tenant } = useTenant()
   const [baselineList, setBaselineList] = useState<Baseline[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -68,13 +70,13 @@ export default function BaselinesPage() {
 
   const fetchBaselines = useCallback(async () => {
     try {
-      const res = await fetch('/api/baselines')
+      const res = await fetch(`/api/${tenant.slug}/baselines`)
       const data = await res.json()
       setBaselineList(data.baselines ?? [])
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [tenant.slug])
 
   useEffect(() => {
     fetchBaselines()
@@ -108,7 +110,9 @@ export default function BaselinesPage() {
 
     setSubmitting(true)
     try {
-      const url = editingBaseline ? `/api/baselines/${editingBaseline.id}` : '/api/baselines'
+      const url = editingBaseline
+        ? `/api/${tenant.slug}/baselines/${editingBaseline.id}`
+        : `/api/${tenant.slug}/baselines`
       const method = editingBaseline ? 'PATCH' : 'POST'
       const res = await fetch(url, {
         method,
@@ -133,7 +137,7 @@ export default function BaselinesPage() {
 
   async function handleDelete(baseline: Baseline) {
     if (!window.confirm(`Delete baseline for "${baseline.category}"?`)) return
-    await fetch(`/api/baselines/${baseline.id}`, { method: 'DELETE' })
+    await fetch(`/api/${tenant.slug}/baselines/${baseline.id}`, { method: 'DELETE' })
     await fetchBaselines()
   }
 

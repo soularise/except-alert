@@ -7,9 +7,10 @@ import { authClient } from '@/lib/auth-client'
 
 interface AppSidebarProps {
   slug: string
+  authDisabled?: boolean
 }
 
-export function AppSidebar({ slug }: AppSidebarProps) {
+export function AppSidebar({ slug, authDisabled = false }: AppSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const base = `/${slug}`
@@ -63,15 +64,17 @@ export function AppSidebar({ slug }: AppSidebarProps) {
         ))}
       </nav>
 
-      <div className="mt-auto px-2 pb-4">
-        <button
-          onClick={handleSignOut}
-          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-300"
-        >
-          <LogOut className="h-4 w-4 shrink-0" />
-          Sign out
-        </button>
-      </div>
+      {!authDisabled && (
+        <div className="mt-auto px-2 pb-4">
+          <button
+            onClick={handleSignOut}
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-300"
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            Sign out
+          </button>
+        </div>
+      )}
     </aside>
   )
 }

@@ -2,16 +2,16 @@ import { eq } from 'drizzle-orm'
 import { auth } from './auth'
 import { db } from './db'
 import { tenants } from './db/schema'
-import { DEFAULT_TENANT_ID, getTenantMembership } from './tenancy'
-
-const ROLE_ORDER = { viewer: 0, member: 1, admin: 2, owner: 3 } as const
+import { getTenantMembership } from './tenancy'
+import { hasTenantRole, type TenantRole } from './tenant-access'
 
 export async function requireTenantAccess(
   req: Request,
   slug: string,
-  minRole: keyof typeof ROLE_ORDER = 'viewer'
+  minRole: TenantRole = 'viewer'
 ) {
   if (process.env.EXCEPTALERT_AUTH_DISABLED === 'true') {
+    if (slug !== 'default') return null
     const [tenant] = await db
       .select()
       .from(tenants)
@@ -27,8 +27,7 @@ export async function requireTenantAccess(
   const membership = await getTenantMembership(slug, session.user.id)
   if (!membership) return null
 
-  const roleValue = ROLE_ORDER[membership.role as keyof typeof ROLE_ORDER] ?? -1
-  if (roleValue < ROLE_ORDER[minRole]) return null
+  if (!hasTenantRole(membership.role, minRole)) return null
 
-  return membership
+  return { ...membership, user: session.user }
 }

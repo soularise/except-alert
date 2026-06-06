@@ -67,7 +67,7 @@ export async function createInvitation(
   return invitation
 }
 
-export async function acceptInvitation(token: string, userId: string) {
+export async function acceptInvitation(token: string, userId: string, userEmail: string) {
   const [invitation] = await db
     .select()
     .from(tenantInvitations)
@@ -77,6 +77,9 @@ export async function acceptInvitation(token: string, userId: string) {
   if (!invitation) return { error: 'Invitation not found' as const }
   if (invitation.acceptedAt) return { error: 'Invitation already used' as const }
   if (new Date() > invitation.expiresAt) return { error: 'Invitation expired' as const }
+  if (invitation.email.toLowerCase() !== userEmail.toLowerCase()) {
+    return { error: 'Invitation was sent to a different email address' as const }
+  }
 
   await db
     .insert(tenantMemberships)

@@ -1,24 +1,28 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useTenant } from '@/components/TenantProvider'
 
 export default function SettingsPage() {
+  const { tenant, role } = useTenant()
   const [slackUrl, setSlackUrl] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const [testMessage, setTestMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const canManageSettings = role === 'owner' || role === 'admin'
 
   useEffect(() => {
-    fetch('/api/settings')
+    fetch(`/api/${tenant.slug}/settings`)
       .then((r) => r.json())
       .then((data) => setSlackUrl(data.slack_webhook_url ?? ''))
       .finally(() => setLoading(false))
-  }, [])
+  }, [tenant.slug])
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
@@ -26,7 +30,7 @@ export default function SettingsPage() {
     setSaveMessage(null)
     setTestMessage(null)
     try {
-      const res = await fetch('/api/settings', {
+      const res = await fetch(`/api/${tenant.slug}/settings`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slack_webhook_url: slackUrl }),
@@ -41,7 +45,7 @@ export default function SettingsPage() {
     setTesting(true)
     setTestMessage(null)
     try {
-      const res = await fetch('/api/settings/slack-test', { method: 'POST' })
+      const res = await fetch(`/api/${tenant.slug}/settings/slack-test`, { method: 'POST' })
       const data = await res.json()
       setTestMessage(
         res.ok
@@ -63,7 +67,14 @@ export default function SettingsPage() {
 
   return (
     <div className="px-6 py-6">
-      <h1 className="mb-6 text-lg font-semibold text-zinc-100">Settings</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-lg font-semibold text-zinc-100">Settings</h1>
+        {canManageSettings && (
+          <Link href={`/${tenant.slug}/settings/team`} className="text-sm text-amber-500 hover:underline">
+            Manage team
+          </Link>
+        )}
+      </div>
       <div className="max-w-lg space-y-4">
         <form onSubmit={handleSave} className="space-y-4">
           <div className="space-y-2">
@@ -74,16 +85,17 @@ export default function SettingsPage() {
               placeholder="https://hooks.slack.com/services/..."
               value={slackUrl}
               onChange={(e) => setSlackUrl(e.target.value)}
+              disabled={!canManageSettings}
             />
           </div>
           <div className="flex items-center gap-3">
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" disabled={saving || !canManageSettings}>
               {saving ? 'Saving...' : 'Save'}
             </Button>
             <Button
               type="button"
               variant="outline"
-              disabled={testing || !slackUrl.trim()}
+              disabled={testing || !slackUrl.trim() || !canManageSettings}
               onClick={handleTest}
             >
               {testing ? 'Sending...' : 'Send Test Message'}
@@ -95,6 +107,11 @@ export default function SettingsPage() {
           {testMessage && (
             <p className={`text-sm ${testMessage.ok ? 'text-green-400' : 'text-destructive'}`}>
               {testMessage.text}
+            </p>
+          )}
+          {!canManageSettings && (
+            <p className="text-sm text-muted-foreground">
+              Ask an admin or owner to change Slack settings.
             </p>
           )}
         </form>

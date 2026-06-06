@@ -32,9 +32,9 @@ function formatRelativeTime(isoString: string): string {
   return `${diffDay}d ago`
 }
 
-export function EventCard({ event }: { event: Event }) {
+export function EventCard({ event, slug }: { event: Event; slug: string }) {
   return (
-    <Link href={`/dashboard/${event.id}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
+    <Link href={`/${slug}/dashboard/${event.id}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
       <Card className="hover:ring-foreground/20 transition-shadow cursor-pointer">
         <CardContent className="flex flex-col gap-2">
           <div className="flex items-start justify-between gap-2">

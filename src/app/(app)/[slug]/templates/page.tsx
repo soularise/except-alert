@@ -37,6 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { useTenant } from '@/components/TenantProvider'
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const
 
@@ -66,6 +67,7 @@ interface ActionTemplate {
 }
 
 export default function TemplatesPage() {
+  const { tenant } = useTenant()
   const [templates, setTemplates] = useState<ActionTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -86,13 +88,13 @@ export default function TemplatesPage() {
 
   const fetchTemplates = useCallback(async () => {
     try {
-      const res = await fetch('/api/templates')
+      const res = await fetch(`/api/${tenant.slug}/templates`)
       const data = await res.json()
       setTemplates(data.templates ?? [])
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [tenant.slug])
 
   useEffect(() => {
     fetchTemplates()
@@ -138,8 +140,8 @@ export default function TemplatesPage() {
       }
 
       const url = editingTemplate
-        ? `/api/templates/${editingTemplate.id}`
-        : '/api/templates'
+        ? `/api/${tenant.slug}/templates/${editingTemplate.id}`
+        : `/api/${tenant.slug}/templates`
       const method = editingTemplate ? 'PATCH' : 'POST'
 
       const res = await fetch(url, {
@@ -164,7 +166,7 @@ export default function TemplatesPage() {
   async function handleDelete(template: ActionTemplate) {
     if (!window.confirm(`Delete "${template.label}"?`)) return
 
-    const res = await fetch(`/api/templates/${template.id}`, { method: 'DELETE' })
+    const res = await fetch(`/api/${tenant.slug}/templates/${template.id}`, { method: 'DELETE' })
     if (res.ok) {
       await fetchTemplates()
     }

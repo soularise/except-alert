@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS "verification" (
 );
 
 -- Our business tables
-CREATE TABLE tenants (
+CREATE TABLE IF NOT EXISTS tenants (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name       TEXT NOT NULL,
   slug       TEXT UNIQUE NOT NULL,
@@ -54,7 +54,7 @@ CREATE TABLE tenants (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE tenant_memberships (
+CREATE TABLE IF NOT EXISTS tenant_memberships (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     TEXT NOT NULL,
   tenant_id   UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -65,7 +65,7 @@ CREATE TABLE tenant_memberships (
   UNIQUE(user_id, tenant_id)
 );
 
-CREATE TABLE tenant_invitations (
+CREATE TABLE IF NOT EXISTS tenant_invitations (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id   UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   email       TEXT NOT NULL,

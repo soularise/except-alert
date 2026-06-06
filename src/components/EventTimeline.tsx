@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { EventCard, type Event } from '@/components/EventCard'
 import { Button } from '@/components/ui/button'
 import type { Filters } from '@/components/FilterBar'
+import { useTenant } from '@/components/TenantProvider'
 
 interface ApiResponse {
   events: Event[]
@@ -16,7 +17,7 @@ interface EventTimelineProps {
   onRecentCount?: (count: number) => void
 }
 
-function buildUrl(filters: Filters, cursor?: string | null): string {
+function buildUrl(slug: string, filters: Filters, cursor?: string | null): string {
   const params = new URLSearchParams()
   if (filters.source) params.set('source', filters.source)
   if (filters.severity) params.set('severity', filters.severity)
@@ -24,10 +25,11 @@ function buildUrl(filters: Filters, cursor?: string | null): string {
   if (filters.status) params.set('status', filters.status)
   if (cursor) params.set('cursor', cursor)
   const qs = params.toString()
-  return `/api/events${qs ? `?${qs}` : ''}`
+  return `/api/${slug}/events${qs ? `?${qs}` : ''}`
 }
 
 export function EventTimeline({ filters, onRecentCount }: EventTimelineProps) {
+  const { tenant } = useTenant()
   const [events, setEvents] = useState<Event[]>([])
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -42,7 +44,7 @@ export function EventTimeline({ filters, onRecentCount }: EventTimelineProps) {
     setNextCursor(null)
     newestReceivedAt.current = null
     try {
-      const res = await fetch(buildUrl(filters))
+      const res = await fetch(buildUrl(tenant.slug, filters))
       if (!res.ok) throw new Error('Failed to fetch events')
       const data: ApiResponse = await res.json()
       setEvents(data.events)
@@ -57,11 +59,11 @@ export function EventTimeline({ filters, onRecentCount }: EventTimelineProps) {
     } finally {
       setLoading(false)
     }
-  }, [filters, onRecentCount])
+  }, [filters, onRecentCount, tenant.slug])
 
   const poll = useCallback(async () => {
     try {
-      const res = await fetch(buildUrl(filters))
+      const res = await fetch(buildUrl(tenant.slug, filters))
       if (!res.ok) return
       const data: ApiResponse = await res.json()
       onRecentCount?.(data.recentCount)
@@ -89,7 +91,7 @@ export function EventTimeline({ filters, onRecentCount }: EventTimelineProps) {
       }
     } catch {
     }
-  }, [filters, onRecentCount])
+  }, [filters, onRecentCount, tenant.slug])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -105,7 +107,7 @@ export function EventTimeline({ filters, onRecentCount }: EventTimelineProps) {
     if (!nextCursor) return
     setLoadingMore(true)
     try {
-      const res = await fetch(buildUrl(filters, nextCursor))
+      const res = await fetch(buildUrl(tenant.slug, filters, nextCursor))
       if (!res.ok) throw new Error('Failed to load more')
       const data: ApiResponse = await res.json()
       setEvents((prev) => [...prev, ...data.events])
@@ -143,7 +145,7 @@ export function EventTimeline({ filters, onRecentCount }: EventTimelineProps) {
   return (
     <div className="flex flex-col gap-2">
       {events.map((event) => (
-        <EventCard key={event.id} event={event} />
+        <EventCard key={event.id} event={event} slug={tenant.slug} />
       ))}
       {nextCursor && (
         <div className="flex justify-center pt-2">
