@@ -38,6 +38,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useTenant } from '@/components/TenantProvider'
+import { PageHeader } from '@/components/PageHeader'
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const
 
@@ -181,7 +182,9 @@ export default function TemplatesPage() {
   }
 
   return (
-    <div className="px-6 py-6">
+    <div className="flex flex-col h-full">
+      <PageHeader title="Templates" />
+      <div className="px-6 py-6">
       <div className="mb-6 flex items-start justify-between">
         <div>
           <h1 className="text-xl font-semibold">Action Templates</h1>
@@ -365,6 +368,7 @@ export default function TemplatesPage() {
           </Form>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   )
 }

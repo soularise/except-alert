@@ -27,6 +27,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useTenant } from '@/components/TenantProvider'
+import { PageHeader } from '@/components/PageHeader'
 
 function formatLastAlerted(iso: string | null): string {
   if (!iso) return 'Never'
@@ -146,10 +147,12 @@ export default function BaselinesPage() {
   }
 
   return (
-    <div className="px-6 py-6">
+    <div className="flex flex-col h-full">
+      <PageHeader title="Baselines" />
+      <div className="px-6 py-6">
       <div className="mb-6 flex items-start justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-zinc-100">Baselines</h1>
+          <h1 className="text-lg font-semibold text-foreground">Baselines</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Alert when event counts exceed thresholds
           </p>
@@ -247,6 +250,7 @@ export default function BaselinesPage() {
           </form>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   )
 }

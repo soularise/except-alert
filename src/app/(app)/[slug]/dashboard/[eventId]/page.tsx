@@ -1,6 +1,5 @@
-import Link from 'next/link'
-import { ChevronLeft } from 'lucide-react'
 import { EventDetail } from '@/components/EventDetail'
+import { PageHeader } from '@/components/PageHeader'
 
 interface EventDetailPageProps {
   params: Promise<{ slug: string; eventId: string }>
@@ -9,15 +8,14 @@ interface EventDetailPageProps {
 export default async function EventDetailPage({ params }: EventDetailPageProps) {
   const { slug, eventId } = await params
   return (
-    <div className="px-6 py-6">
-      <Link
-        href={`/${slug}/dashboard`}
-        className="mb-4 flex items-center gap-1 text-sm text-zinc-400 hover:text-zinc-300 transition-colors w-fit"
-      >
-        <ChevronLeft className="h-4 w-4" />
-        Events
-      </Link>
-      <EventDetail eventId={eventId} />
+    <div className="flex flex-col h-full">
+      <PageHeader
+        title="Event Detail"
+        breadcrumb={{ label: 'Events', href: `/${slug}/dashboard` }}
+      />
+      <div className="px-6 py-6">
+        <EventDetail eventId={eventId} />
+      </div>
     </div>
   )
 }

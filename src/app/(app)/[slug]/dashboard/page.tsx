@@ -1,4 +1,5 @@
 import { DashboardClient } from '@/components/DashboardClient'
+import { PageHeader } from '@/components/PageHeader'
 
 interface DashboardPageProps {
   searchParams: Promise<{
@@ -18,8 +19,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     status:   params.status,
   }
   return (
-    <div className="px-6 py-6">
-      <DashboardClient initialFilters={filters} />
+    <div className="flex flex-col h-full">
+      <PageHeader title="Events" />
+      <div className="px-6 py-6">
+        <DashboardClient initialFilters={filters} />
+      </div>
     </div>
   )
 }

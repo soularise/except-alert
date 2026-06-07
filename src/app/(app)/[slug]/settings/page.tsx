@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useTenant } from '@/components/TenantProvider'
+import { PageHeader } from '@/components/PageHeader'
 
 export default function SettingsPage() {
   const { tenant, role } = useTenant()
@@ -59,22 +60,27 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="px-6 py-6">
-        <p className="text-sm text-muted-foreground">Loading...</p>
-      </div>
+      <>
+        <PageHeader title="Settings" />
+        <div className="px-6 py-6">
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </>
     )
   }
 
   return (
-    <div className="px-6 py-6">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-lg font-semibold text-zinc-100">Settings</h1>
-        {canManageSettings && (
-          <Link href={`/${tenant.slug}/settings/team`} className="text-sm text-amber-500 hover:underline">
-            Manage team
-          </Link>
-        )}
-      </div>
+    <div className="flex flex-col h-full">
+      <PageHeader title="Settings" />
+      <div className="px-6 py-6">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-lg font-semibold text-foreground">Settings</h1>
+          {canManageSettings && (
+            <Link href={`/${tenant.slug}/settings/team`} className="text-sm text-primary hover:underline">
+              Manage team
+            </Link>
+          )}
+        </div>
       <div className="max-w-lg space-y-4">
         <form onSubmit={handleSave} className="space-y-4">
           <div className="space-y-2">
@@ -115,6 +121,7 @@ export default function SettingsPage() {
             </p>
           )}
         </form>
+      </div>
       </div>
     </div>
   )
