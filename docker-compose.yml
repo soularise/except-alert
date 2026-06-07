@@ -12,11 +12,17 @@ services:
     restart: unless-stopped
 
   exceptalert:
-    build: .
+    build:
+      context: .
+      args:
+        BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-except-alert-local-dev-secret-change-me}
+        BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
     ports:
       - "3000:3000"
     environment:
       DATABASE_URL: postgres://relay:relay@postgres:5432/relay
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-except-alert-local-dev-secret-change-me}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
       NODE_ENV: production
     depends_on:
       postgres:
