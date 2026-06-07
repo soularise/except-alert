@@ -12,7 +12,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} dark h-full antialiased`}>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+      <head>
+        <script dangerouslySetInnerHTML={{
+          __html: `(function(){try{var p=localStorage.getItem('ea-palette');if(p==='monitoring')document.documentElement.dataset.palette='monitoring'}catch(e){}})()`,
+        }} />
+      </head>
       <body className="flex h-full bg-background text-foreground">
         {children}
       </body>
