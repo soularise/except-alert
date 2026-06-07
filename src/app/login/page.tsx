@@ -5,17 +5,18 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { authClient } from '@/lib/auth-client'
+import { AuthPanel } from '@/components/AuthPanel'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 export default function LoginPage() {
   return (
-    <div className="flex h-full items-center justify-center">
+    <AuthPanel title="Sign in" subtitle="Monitor exceptions and handoffs.">
       <Suspense>
         <LoginForm />
       </Suspense>
-    </div>
+    </AuthPanel>
   )
 }
 
@@ -34,7 +35,10 @@ function LoginForm() {
     setLoading(true)
     setError(null)
 
-    const { error: authError } = await authClient.signIn.email({ email, password })
+    const { error: authError } = await authClient.signIn.email({
+      email,
+      password
+    })
     setLoading(false)
 
     if (authError) {
@@ -46,11 +50,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="w-full max-w-sm space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Sign in</h1>
-        <p className="mt-1 text-sm text-zinc-400">ExceptAlert</p>
-      </div>
+    <>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1">
           <Label htmlFor="email">Email</Label>
@@ -59,7 +59,7 @@ function LoginForm() {
             type="email"
             autoComplete="email"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
             required
           />
         </div>
@@ -70,21 +70,21 @@ function LoginForm() {
             type="password"
             autoComplete="current-password"
             value={password}
-            onChange={e => setPassword(e.target.value)}
+            onChange={(e) => setPassword(e.target.value)}
             required
           />
         </div>
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? 'Signing in…' : 'Sign in'}
         </Button>
       </form>
-      <p className="text-sm text-zinc-400">
+      <p className="mt-6 border-t border-border/60 pt-4 text-sm text-muted-foreground">
         No account?{' '}
-        <Link href="/signup" className="text-amber-500 hover:underline">
+        <Link href="/signup" className="text-primary hover:underline">
           Sign up
         </Link>
       </p>
-    </div>
+    </>
   )
 }

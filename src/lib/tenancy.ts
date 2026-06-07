@@ -1,5 +1,6 @@
 import { and, eq } from 'drizzle-orm'
 import { headers } from 'next/headers'
+import { cache } from 'react'
 import { db } from './db'
 import { auth } from './auth'
 import { tenantInvitations, tenantMemberships, tenants } from './db/schema'
@@ -31,7 +32,11 @@ export async function createTenantForUser(userId: string, userName: string) {
   return tenant
 }
 
-export async function getTenantMembership(slug: string, userId: string) {
+export const getServerSession = cache(async () => {
+  return auth.api.getSession({ headers: await headers() })
+})
+
+export const getTenantMembership = cache(async (slug: string, userId: string) => {
   const [row] = await db
     .select({ tenant: tenants, role: tenantMemberships.role })
     .from(tenantMemberships)
@@ -39,7 +44,7 @@ export async function getTenantMembership(slug: string, userId: string) {
     .where(and(eq(tenants.slug, slug), eq(tenantMemberships.userId, userId)))
     .limit(1)
   return row ?? null
-}
+})
 
 export async function getFirstTenantForUser(userId: string) {
   const [row] = await db
@@ -111,7 +116,7 @@ export async function getServerTenantId(slug: string): Promise<string | null> {
   if (process.env.EXCEPTALERT_AUTH_DISABLED === 'true') {
     return DEFAULT_TENANT_ID
   }
-  const session = await auth.api.getSession({ headers: await headers() })
+  const session = await getServerSession()
   if (!session) return null
   const membership = await getTenantMembership(slug, session.user.id)
   return membership?.tenant.id ?? null

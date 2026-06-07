@@ -7,7 +7,7 @@ import {
   DialogContent,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
+  DialogTitle
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,7 +16,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
+  SelectValue
 } from '@/components/ui/select'
 import {
   Table,
@@ -24,7 +24,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
+  TableRow
 } from '@/components/ui/table'
 import { useTenant } from '@/components/TenantProvider'
 import { PageHeader } from '@/components/PageHeader'
@@ -44,7 +44,7 @@ const WINDOW_OPTIONS = [
   { label: '30 min', value: 30 },
   { label: '60 min', value: 60 },
   { label: '6 hours', value: 360 },
-  { label: '24 hours', value: 1440 },
+  { label: '24 hours', value: 1440 }
 ]
 
 interface Baseline {
@@ -106,8 +106,14 @@ export default function BaselinesPage() {
     setFormError(null)
 
     const thresholdNum = parseInt(threshold, 10)
-    if (!category.trim()) { setFormError('Category is required'); return }
-    if (isNaN(thresholdNum) || thresholdNum < 1) { setFormError('Threshold must be a positive number'); return }
+    if (!category.trim()) {
+      setFormError('Category is required')
+      return
+    }
+    if (isNaN(thresholdNum) || thresholdNum < 1) {
+      setFormError('Threshold must be a positive number')
+      return
+    }
 
     setSubmitting(true)
     try {
@@ -121,8 +127,8 @@ export default function BaselinesPage() {
         body: JSON.stringify({
           category,
           threshold: thresholdNum,
-          window_minutes: parseInt(windowMinutes, 10),
-        }),
+          window_minutes: parseInt(windowMinutes, 10)
+        })
       })
       if (!res.ok) {
         const data = await res.json()
@@ -138,118 +144,145 @@ export default function BaselinesPage() {
 
   async function handleDelete(baseline: Baseline) {
     if (!window.confirm(`Delete baseline for "${baseline.category}"?`)) return
-    await fetch(`/api/${tenant.slug}/baselines/${baseline.id}`, { method: 'DELETE' })
+    await fetch(`/api/${tenant.slug}/baselines/${baseline.id}`, {
+      method: 'DELETE'
+    })
     await fetchBaselines()
   }
 
   function windowLabel(minutes: number) {
-    return WINDOW_OPTIONS.find((o) => o.value === minutes)?.label ?? `${minutes} min`
+    return (
+      WINDOW_OPTIONS.find((o) => o.value === minutes)?.label ?? `${minutes} min`
+    )
   }
 
   return (
     <div className="flex flex-col h-full">
       <PageHeader title="Baselines" />
       <div className="px-6 py-6">
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-foreground">Baselines</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Alert when event counts exceed thresholds
-          </p>
+        <div className="mb-6 flex items-start justify-between">
+          <div>
+            <h1 className="text-lg font-semibold text-foreground">Baselines</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Alert when event counts exceed thresholds
+            </p>
+          </div>
+          <Button onClick={openAddDialog}>Add Baseline</Button>
         </div>
-        <Button onClick={openAddDialog}>Add Baseline</Button>
-      </div>
 
-      {loading ? (
-        <p className="text-sm text-muted-foreground">Loading...</p>
-      ) : baselineList.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No baselines yet.</p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Category</TableHead>
-              <TableHead>Threshold</TableHead>
-              <TableHead>Window</TableHead>
-              <TableHead>Last Alerted</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {baselineList.map((b) => (
-              <TableRow key={b.id}>
-                <TableCell className="font-mono text-xs">{b.category}</TableCell>
-                <TableCell>{b.threshold} events</TableCell>
-                <TableCell>{windowLabel(b.windowMinutes)}</TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {formatLastAlerted(b.lastAlertedAt)}
-                </TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => openEditDialog(b)}>
-                      Edit
-                    </Button>
-                    <Button variant="destructive" size="sm" onClick={() => handleDelete(b)}>
-                      Delete
-                    </Button>
-                  </div>
-                </TableCell>
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        ) : baselineList.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No baselines yet.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Category</TableHead>
+                <TableHead>Threshold</TableHead>
+                <TableHead>Window</TableHead>
+                <TableHead>Last Alerted</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+            </TableHeader>
+            <TableBody>
+              {baselineList.map((b) => (
+                <TableRow key={b.id}>
+                  <TableCell className="font-mono text-xs">
+                    {b.category}
+                  </TableCell>
+                  <TableCell>{b.threshold} events</TableCell>
+                  <TableCell>{windowLabel(b.windowMinutes)}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {formatLastAlerted(b.lastAlertedAt)}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openEditDialog(b)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDelete(b)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editingBaseline ? 'Edit Baseline' : 'Add Baseline'}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="bl-category">Category</Label>
-              <Input
-                id="bl-category"
-                placeholder="e.g. stripe.charge.failed"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="bl-threshold">Threshold (events)</Label>
-              <Input
-                id="bl-threshold"
-                type="number"
-                min={1}
-                placeholder="e.g. 10"
-                value={threshold}
-                onChange={(e) => setThreshold(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Window</Label>
-              <Select value={windowMinutes} onValueChange={(v) => { if (v) setWindowMinutes(v) }}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {WINDOW_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={String(o.value)}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {formError && <p className="text-sm text-destructive">{formError}</p>}
-            <DialogFooter>
-              <Button type="submit" disabled={submitting}>
-                {submitting ? 'Saving...' : editingBaseline ? 'Save Changes' : 'Create Baseline'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {editingBaseline ? 'Edit Baseline' : 'Add Baseline'}
+              </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="bl-category">Category</Label>
+                <Input
+                  id="bl-category"
+                  placeholder="e.g. stripe.charge.failed"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bl-threshold">Threshold (events)</Label>
+                <Input
+                  id="bl-threshold"
+                  type="number"
+                  min={1}
+                  placeholder="e.g. 10"
+                  value={threshold}
+                  onChange={(e) => setThreshold(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Window</Label>
+                <Select
+                  value={windowMinutes}
+                  onValueChange={(v) => {
+                    if (v) setWindowMinutes(v)
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {WINDOW_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={String(o.value)}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {formError && (
+                <p className="text-sm text-destructive">{formError}</p>
+              )}
+              <DialogFooter>
+                <Button type="submit" disabled={submitting}>
+                  {submitting
+                    ? 'Saving...'
+                    : editingBaseline
+                      ? 'Save Changes'
+                      : 'Create Baseline'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )

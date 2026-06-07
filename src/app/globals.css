@@ -1,6 +1,6 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -48,53 +48,59 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* ── Healthcare palette (default) ──────────────────────────────────── */
+/* Healthcare palette (default) */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.52 0.18 245);
+  --background: oklch(0.2 0.025 245);
+  --foreground: oklch(0.93 0.005 245);
+  --card: oklch(0.25 0.025 245);
+  --card-foreground: oklch(0.93 0.005 245);
+  --popover: oklch(0.24 0.025 245);
+  --popover-foreground: oklch(0.93 0.005 245);
+  --primary: oklch(0.64 0.16 245);
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.90 0.02 245);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.52 0.18 245);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --secondary: oklch(0.3 0.025 245);
+  --secondary-foreground: oklch(0.93 0.005 245);
+  --muted: oklch(0.29 0.02 245);
+  --muted-foreground: oklch(0.72 0.015 245);
+  --accent: oklch(0.32 0.03 245);
+  --accent-foreground: oklch(0.94 0.005 245);
+  --destructive: oklch(0.66 0.22 27);
+  --border: oklch(0.36 0.03 245);
+  --input: oklch(0.4 0.03 245);
+  --ring: oklch(0.64 0.16 245);
+  --chart-1: oklch(0.68 0.14 245);
+  --chart-2: oklch(0.68 0.12 195);
+  --chart-3: oklch(0.78 0.14 85);
+  --chart-4: oklch(0.72 0.16 35);
+  --chart-5: oklch(0.7 0.15 310);
   --radius: 0.625rem;
-  --sidebar: oklch(0.16 0.04 245);
-  --sidebar-foreground: oklch(0.90 0 0);
-  --sidebar-primary: oklch(0.52 0.18 245);
+  --sidebar: oklch(0.15 0.035 245);
+  --sidebar-foreground: oklch(0.9 0.005 245);
+  --sidebar-primary: oklch(0.64 0.16 245);
   --sidebar-primary-foreground: oklch(1 0 0);
   --sidebar-accent: oklch(0.22 0.035 245);
-  --sidebar-accent-foreground: oklch(0.90 0 0);
-  --sidebar-border: oklch(0.25 0.03 245);
-  --sidebar-ring: oklch(0.52 0.18 245);
+  --sidebar-accent-foreground: oklch(0.92 0.005 245);
+  --sidebar-border: oklch(0.29 0.03 245);
+  --sidebar-ring: oklch(0.64 0.16 245);
 }
 
-/* ── Monitoring palette override ───────────────────────────────────── */
-html[data-palette="monitoring"] {
-  --background: oklch(0.97 0.005 195);
-  --border: oklch(0.88 0.015 195);
-  --primary: oklch(0.55 0.10 195);
-  --ring: oklch(0.55 0.10 195);
-  --sidebar: oklch(0.14 0.02 195);
-  --sidebar-primary: oklch(0.55 0.10 195);
-  --sidebar-accent: oklch(0.20 0.015 195);
-  --sidebar-border: oklch(0.22 0.02 195);
-  --sidebar-ring: oklch(0.55 0.10 195);
+/* Monitoring palette override */
+html[data-palette='monitoring'] {
+  --background: oklch(0.19 0.018 195);
+  --card: oklch(0.245 0.018 195);
+  --popover: oklch(0.235 0.018 195);
+  --secondary: oklch(0.295 0.018 195);
+  --muted: oklch(0.285 0.016 195);
+  --accent: oklch(0.315 0.025 195);
+  --border: oklch(0.35 0.025 195);
+  --input: oklch(0.39 0.025 195);
+  --primary: oklch(0.68 0.1 195);
+  --ring: oklch(0.68 0.1 195);
+  --sidebar: oklch(0.135 0.02 195);
+  --sidebar-primary: oklch(0.68 0.1 195);
+  --sidebar-accent: oklch(0.205 0.018 195);
+  --sidebar-border: oklch(0.27 0.02 195);
+  --sidebar-ring: oklch(0.68 0.1 195);
 }
 
 @layer base {

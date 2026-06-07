@@ -1,10 +1,8 @@
 import { notFound } from 'next/navigation'
-import { headers } from 'next/headers'
 import { eq } from 'drizzle-orm'
-import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { tenants } from '@/lib/db/schema'
-import { DEFAULT_TENANT_ID, getTenantMembership } from '@/lib/tenancy'
+import { DEFAULT_TENANT_ID, getServerSession, getTenantMembership } from '@/lib/tenancy'
 import { TenantProvider } from '@/components/TenantProvider'
 import { AppSidebar } from '@/components/AppSidebar'
 
@@ -36,7 +34,7 @@ export default async function TenantLayout({
     )
   }
 
-  const session = await auth.api.getSession({ headers: await headers() })
+  const session = await getServerSession()
   if (!session) notFound()
 
   const membership = await getTenantMembership(slug, session.user.id)

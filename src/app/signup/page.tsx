@@ -5,17 +5,21 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { authClient } from '@/lib/auth-client'
+import { AuthPanel } from '@/components/AuthPanel'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 export default function SignupPage() {
   return (
-    <div className="flex h-full items-center justify-center">
+    <AuthPanel
+      title="Create account"
+      subtitle="Your organization will be created automatically."
+    >
       <Suspense>
         <SignupForm />
       </Suspense>
-    </div>
+    </AuthPanel>
   )
 }
 
@@ -35,7 +39,11 @@ function SignupForm() {
     setLoading(true)
     setError(null)
 
-    const { error: authError } = await authClient.signUp.email({ name, email, password })
+    const { error: authError } = await authClient.signUp.email({
+      name,
+      email,
+      password
+    })
     setLoading(false)
 
     if (authError) {
@@ -47,13 +55,7 @@ function SignupForm() {
   }
 
   return (
-    <div className="w-full max-w-sm space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Create account</h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          You&apos;ll get your own organization automatically.
-        </p>
-      </div>
+    <>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1">
           <Label htmlFor="name">Your name</Label>
@@ -62,7 +64,7 @@ function SignupForm() {
             type="text"
             autoComplete="name"
             value={name}
-            onChange={e => setName(e.target.value)}
+            onChange={(e) => setName(e.target.value)}
             placeholder="Alice Smith"
             required
           />
@@ -74,7 +76,7 @@ function SignupForm() {
             type="email"
             autoComplete="email"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
             required
           />
         </div>
@@ -85,22 +87,22 @@ function SignupForm() {
             type="password"
             autoComplete="new-password"
             value={password}
-            onChange={e => setPassword(e.target.value)}
+            onChange={(e) => setPassword(e.target.value)}
             minLength={8}
             required
           />
         </div>
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? 'Creating account…' : 'Create account'}
         </Button>
       </form>
-      <p className="text-sm text-zinc-400">
+      <p className="mt-6 border-t border-border/60 pt-4 text-sm text-muted-foreground">
         Already have an account?{' '}
-        <Link href="/login" className="text-amber-500 hover:underline">
+        <Link href="/login" className="text-primary hover:underline">
           Sign in
         </Link>
       </p>
-    </div>
+    </>
   )
 }

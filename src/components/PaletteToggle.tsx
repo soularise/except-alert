@@ -1,22 +1,28 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 type Palette = 'healthcare' | 'monitoring'
 
 const STORAGE_KEY = 'ea-palette'
 
-export function PaletteToggle() {
-  const [palette, setPalette] = useState<Palette>('healthcare')
+function getInitialPalette(): Palette {
+  if (typeof window === 'undefined') return 'healthcare'
+  try {
+    return window.localStorage.getItem(STORAGE_KEY) === 'monitoring'
+      ? 'monitoring'
+      : 'healthcare'
+  } catch {
+    return 'healthcare'
+  }
+}
 
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored === 'monitoring') setPalette('monitoring')
-  }, [])
+export function PaletteToggle() {
+  const [palette, setPalette] = useState<Palette>(getInitialPalette)
 
   function apply(p: Palette) {
     setPalette(p)
-    localStorage.setItem(STORAGE_KEY, p)
+    window.localStorage.setItem(STORAGE_KEY, p)
     if (p === 'healthcare') {
       delete document.documentElement.dataset.palette
     } else {

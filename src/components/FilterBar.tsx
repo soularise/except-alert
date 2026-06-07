@@ -99,12 +99,12 @@ export function FilterBar({ filters }: FilterBarProps) {
       </Select>
 
       {hasFilters && (
-        <>
+        <div className="ml-auto flex items-center gap-2">
           <Separator orientation="vertical" className="mx-1 h-5" />
           <Button variant="ghost" size="sm" onClick={clearFilters}>
             Clear filters
           </Button>
-        </>
+        </div>
       )}
     </div>
   )
