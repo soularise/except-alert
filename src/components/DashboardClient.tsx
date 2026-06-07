@@ -3,28 +3,25 @@
 import { useState } from 'react'
 import { FilterBar, type Filters } from '@/components/FilterBar'
 import { EventTimeline } from '@/components/EventTimeline'
-import { Badge } from '@/components/ui/badge'
+import { SummaryTiles } from '@/components/SummaryTiles'
 
 interface DashboardClientProps {
   initialFilters: Filters
+  openCount: number
+  criticalCount: number
 }
 
-export function DashboardClient({ initialFilters }: DashboardClientProps) {
+export function DashboardClient({ initialFilters, openCount, criticalCount }: DashboardClientProps) {
   const [recentCount, setRecentCount] = useState<number>(0)
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-lg font-semibold text-zinc-100">Events</h1>
-        {recentCount > 0 && (
-          <Badge className="bg-blue-500 text-white border-transparent">
-            {recentCount} event{recentCount !== 1 ? 's' : ''} in last 60s
-          </Badge>
-        )}
-      </div>
-
+      <SummaryTiles
+        openCount={openCount}
+        criticalCount={criticalCount}
+        recentCount={recentCount}
+      />
       <FilterBar filters={initialFilters} />
-
       <EventTimeline filters={initialFilters} onRecentCount={setRecentCount} />
     </div>
   )

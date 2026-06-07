@@ -1,5 +1,7 @@
 import { and, eq } from 'drizzle-orm'
+import { headers } from 'next/headers'
 import { db } from './db'
+import { auth } from './auth'
 import { tenantInvitations, tenantMemberships, tenants } from './db/schema'
 
 export const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000001'
@@ -103,4 +105,14 @@ export async function acceptInvitation(token: string, userId: string, userEmail:
     .limit(1)
 
   return { tenant }
+}
+
+export async function getServerTenantId(slug: string): Promise<string | null> {
+  if (process.env.EXCEPTALERT_AUTH_DISABLED === 'true') {
+    return DEFAULT_TENANT_ID
+  }
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session) return null
+  const membership = await getTenantMembership(slug, session.user.id)
+  return membership?.tenant.id ?? null
 }
