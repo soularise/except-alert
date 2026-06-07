@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
-import { SeverityBadge } from '@/components/SeverityBadge'
 import { StatusBadge } from '@/components/StatusBadge'
+import { cn } from '@/lib/utils'
 
 export interface Event {
   id: string
@@ -15,6 +15,13 @@ export interface Event {
   receivedAt: string
   occurredAt: string
   status: string | null
+}
+
+const severityStripe: Record<string, string> = {
+  critical: 'border-l-red-600',
+  error:    'border-l-orange-500',
+  warning:  'border-l-yellow-500',
+  info:     'border-l-blue-500',
 }
 
 function formatRelativeTime(isoString: string): string {
@@ -33,15 +40,24 @@ function formatRelativeTime(isoString: string): string {
 }
 
 export function EventCard({ event, slug }: { event: Event; slug: string }) {
+  const stripe = severityStripe[event.severity] ?? 'border-l-border'
+
   return (
-    <Link href={`/${slug}/dashboard/${event.id}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
-      <Card className="hover:ring-foreground/20 transition-shadow cursor-pointer">
+    <Link
+      href={`/${slug}/dashboard/${event.id}`}
+      className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl"
+    >
+      <Card
+        className={cn(
+          'border-l-4 border-border/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer',
+          stripe
+        )}
+      >
         <CardContent className="flex flex-col gap-2">
           <div className="flex items-start justify-between gap-2">
-            <SeverityBadge severity={event.severity} />
+            <p className="font-semibold text-sm leading-snug">{event.title}</p>
             <StatusBadge status={event.status ?? 'open'} />
           </div>
-          <p className="font-semibold text-sm leading-snug">{event.title}</p>
           {event.description && (
             <p className="text-xs text-muted-foreground line-clamp-2">{event.description}</p>
           )}
