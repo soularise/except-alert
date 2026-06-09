@@ -189,3 +189,17 @@ export const settings = pgTable(
   },
   (t) => [primaryKey({ columns: [t.tenantId, t.key] })]
 )
+
+// Owned by Relay (created in Relay migration 003_tenant_aware_ingestion.sql).
+// ExceptAlert writes to it via the Provider Settings UI; Relay reads from it
+// for per-tenant signature verification during webhook ingestion.
+export const tenantProviders = pgTable('tenant_providers', {
+  id:                 uuid('id').primaryKey().defaultRandom(),
+  tenantId:           uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  providerId:         text('provider_id').notNull(),
+  secretKey:          text('secret_key'),
+  signatureHeader:    text('signature_header'),
+  signatureAlgorithm: text('signature_algorithm'),
+  config:             jsonb('config').default({}),
+  createdAt:          timestamptz('created_at').notNull().defaultNow(),
+})

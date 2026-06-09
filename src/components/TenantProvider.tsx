@@ -8,6 +8,7 @@ type Tenant = typeof tenants.$inferSelect
 type TenantContextValue = {
   tenant: Tenant
   role: 'owner' | 'admin' | 'member' | 'viewer'
+  authDisabled?: boolean
 }
 
 const TenantContext = createContext<TenantContextValue | null>(null)
@@ -15,10 +16,11 @@ const TenantContext = createContext<TenantContextValue | null>(null)
 export function TenantProvider({
   tenant,
   role,
+  authDisabled = false,
   children,
 }: TenantContextValue & { children: React.ReactNode }) {
   return (
-    <TenantContext.Provider value={{ tenant, role }}>
+    <TenantContext.Provider value={{ tenant, role, authDisabled }}>
       {children}
     </TenantContext.Provider>
   )

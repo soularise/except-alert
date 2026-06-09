@@ -19,7 +19,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { PageHeader } from '@/components/PageHeader'
 import { useTenant } from '@/components/TenantProvider'
 
 type Member = {
@@ -39,7 +38,7 @@ type Invitation = {
 }
 
 export default function TeamPage() {
-  const { tenant } = useTenant()
+  const { tenant, authDisabled } = useTenant()
   const [members, setMembers] = useState<Member[]>([])
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [email, setEmail] = useState('')
@@ -98,16 +97,22 @@ export default function TeamPage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <PageHeader title="Team" />
-      <div className="px-6 py-6">
-        <div className="mb-6">
-          <h1 className="text-lg font-semibold text-foreground">Team</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage who can access {tenant.name}.
-          </p>
-        </div>
+    <div style={{ width: '960px', maxWidth: '100%' }}>
+      <div className="mb-6">
+        <h2 className="text-sm font-semibold text-foreground">Team</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Manage who can access {tenant.name}.
+        </p>
+      </div>
 
+      {authDisabled ? (
+        <div
+          className="mb-8 max-w-3xl rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground"
+          style={{ width: '760px', maxWidth: '100%' }}
+        >
+          Team invitations are available when authentication is enabled.
+        </div>
+      ) : (
         <form onSubmit={inviteMember} className="mb-8 flex max-w-3xl flex-wrap items-end gap-3">
           <div className="space-y-2">
             <Label htmlFor="invite-email">Email</Label>
@@ -137,70 +142,70 @@ export default function TeamPage() {
             {submitting ? 'Inviting...' : 'Invite'}
           </Button>
         </form>
+      )}
 
-        {inviteUrl && (
-          <div className="mb-6 max-w-3xl rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
-            <p className="font-medium text-amber-700">Invite link created</p>
-            <p className="mt-1 break-all text-muted-foreground">{inviteUrl}</p>
-          </div>
-        )}
+      {inviteUrl && (
+        <div className="mb-6 max-w-3xl rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
+          <p className="font-medium text-amber-700">Invite link created</p>
+          <p className="mt-1 break-all text-muted-foreground">{inviteUrl}</p>
+        </div>
+      )}
 
-        {error && <p className="mb-6 text-sm text-destructive">{error}</p>}
+      {error && <p className="mb-6 text-sm text-destructive">{error}</p>}
 
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        ) : (
-          <div className="space-y-8">
-            <section>
-              <h2 className="mb-3 text-sm font-medium text-foreground">Members</h2>
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      ) : (
+        <div className="space-y-8">
+          <section>
+            <h2 className="mb-3 text-sm font-medium text-foreground">Members</h2>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {members.map((member) => (
+                  <TableRow key={member.id}>
+                    <TableCell>{member.name}</TableCell>
+                    <TableCell>{member.email}</TableCell>
+                    <TableCell className="capitalize">{member.role}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </section>
+
+          <section>
+            <h2 className="mb-3 text-sm font-medium text-foreground">Pending invitations</h2>
+            {invitations.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No pending invitations.</p>
+            ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Role</TableHead>
+                    <TableHead>Expires</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {members.map((member) => (
-                    <TableRow key={member.id}>
-                      <TableCell>{member.name}</TableCell>
-                      <TableCell>{member.email}</TableCell>
-                      <TableCell className="capitalize">{member.role}</TableCell>
+                  {invitations.map((invitation) => (
+                    <TableRow key={invitation.id}>
+                      <TableCell>{invitation.email}</TableCell>
+                      <TableCell className="capitalize">{invitation.role}</TableCell>
+                      <TableCell>{new Date(invitation.expiresAt).toLocaleDateString()}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-            </section>
-
-            <section>
-              <h2 className="mb-3 text-sm font-medium text-foreground">Pending invitations</h2>
-              {invitations.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No pending invitations.</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Expires</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {invitations.map((invitation) => (
-                      <TableRow key={invitation.id}>
-                        <TableCell>{invitation.email}</TableCell>
-                        <TableCell className="capitalize">{invitation.role}</TableCell>
-                        <TableCell>{new Date(invitation.expiresAt).toLocaleDateString()}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </section>
-          </div>
-        )}
-      </div>
+            )}
+          </section>
+        </div>
+      )}
     </div>
   )
 }

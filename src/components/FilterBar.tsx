@@ -50,7 +50,7 @@ export function FilterBar({ filters }: FilterBarProps) {
         <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Source"
-          defaultValue={filters.source ?? ''}
+          value={filters.source ?? ''}
           className={`w-36 pl-8 ${filters.source ? 'ring-1 ring-primary/40' : ''}`}
           onChange={(e) => updateParam('source', e.target.value)}
         />
@@ -76,7 +76,7 @@ export function FilterBar({ filters }: FilterBarProps) {
         <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Category"
-          defaultValue={filters.category ?? ''}
+          value={filters.category ?? ''}
           className={`w-36 pl-8 ${filters.category ? 'ring-1 ring-primary/40' : ''}`}
           onChange={(e) => updateParam('category', e.target.value)}
         />
