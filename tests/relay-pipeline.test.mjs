@@ -33,3 +33,32 @@ before(() => {
 after(async () => {
   await sql.end()
 })
+
+test('stripe charge.failed — deep assertions', async (t) => {
+  let hookId
+
+  t.after(async () => {
+    if (hookId) await sql`DELETE FROM events WHERE hook_id = ${hookId}`
+  })
+
+  const body = fixture('stripe-charge-failed.json')
+  const res = await postToRelay('stripe', body)
+  assert.equal(res.status, 200, `Relay returned ${res.status}`)
+
+  const data = await res.json()
+  hookId = data.hook_id
+  assert.ok(hookId, 'Relay response missing hook_id')
+
+  const [event] = await sql`SELECT * FROM events WHERE hook_id = ${hookId}`
+  assert.ok(event, `No event row found for hook_id ${hookId}`)
+
+  assert.equal(event.source, 'stripe')
+  assert.equal(event.severity, 'error')
+  assert.equal(event.category, 'stripe.charge.failed')
+  assert.equal(event.title, 'charge.failed: ch_3NzQKL2eZvKYlo2C0XVz4Y1s')
+  assert.equal(event.description, 'Your card was declined. Network status: declined_by_network')
+  assert.deepEqual(event.tags, { charge_id: 'ch_3NzQKL2eZvKYlo2C0XVz4Y1s' })
+  assert.deepEqual(event.payload, body)
+  assert.equal(event.tenant_id, DEFAULT_TENANT_ID)
+  assert.equal(event.occurred_at.getTime(), new Date(1748872200 * 1000).getTime())
+})
