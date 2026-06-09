@@ -1,0 +1,18 @@
+{
+  "id": "evt_test_3NzQKLPISucceeded",
+  "object": "event",
+  "type": "payment_intent.succeeded",
+  "created": 1748879400,
+  "livemode": false,
+  "data": {
+    "object": {
+      "id": "pi_3NzQKL2eZvKYlo2C0PISucc",
+      "object": "payment_intent",
+      "amount": 3000,
+      "currency": "usd",
+      "description": "Payment for invoice INV-2026-0042",
+      "status": "succeeded",
+      "created": 1748879400
+    }
+  }
+}

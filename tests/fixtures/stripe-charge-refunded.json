@@ -1,0 +1,20 @@
+{
+  "id": "evt_test_3NzQKLRefund",
+  "object": "event",
+  "type": "charge.refunded",
+  "created": 1748875800,
+  "livemode": false,
+  "data": {
+    "object": {
+      "id": "ch_3NzQKL2eZvKYlo2C0Refund",
+      "object": "charge",
+      "amount": 5000,
+      "amount_refunded": 5000,
+      "currency": "usd",
+      "description": "Refund for order #1042",
+      "refunded": true,
+      "status": "succeeded",
+      "created": 1748875800
+    }
+  }
+}

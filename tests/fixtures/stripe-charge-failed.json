@@ -1,0 +1,26 @@
+{
+  "id": "evt_test_WFKrJUaOJMIjDWFk",
+  "object": "event",
+  "type": "charge.failed",
+  "created": 1748872200,
+  "livemode": false,
+  "data": {
+    "object": {
+      "id": "ch_3NzQKL2eZvKYlo2C0XVz4Y1s",
+      "object": "charge",
+      "amount": 2000,
+      "currency": "usd",
+      "description": "Subscription renewal",
+      "failure_code": "card_declined",
+      "failure_message": "Your card was declined. Network status: declined_by_network",
+      "outcome": {
+        "network_status": "declined_by_network",
+        "reason": "generic_decline",
+        "risk_level": "normal",
+        "type": "issuer_declined"
+      },
+      "status": "failed",
+      "created": 1748872200
+    }
+  }
+}

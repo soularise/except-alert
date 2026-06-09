@@ -1,0 +1,29 @@
+{
+  "event": {
+    "id": "01BGTPS0U0XW0K9KBKQW0RRS4L",
+    "event_type": "incident.triggered",
+    "occurred_at": "2026-06-09T10:02:09Z",
+    "agent": {
+      "html_url": "https://acme.pagerduty.com/users/PXPGF42",
+      "id": "PXPGF42",
+      "type": "user_reference",
+      "summary": "Jane Smith"
+    },
+    "client": null,
+    "data": {
+      "id": "Q0QVMRXHZFG04A",
+      "type": "incident",
+      "title": "CPU > 90% on web-01 for 5 minutes",
+      "self": "https://api.pagerduty.com/incidents/Q0QVMRXHZFG04A",
+      "html_url": "https://acme.pagerduty.com/incidents/Q0QVMRXHZFG04A",
+      "number": 42,
+      "status": "triggered",
+      "urgency": "high",
+      "service": {
+        "id": "PIJ90N7",
+        "name": "web-app",
+        "html_url": "https://acme.pagerduty.com/services/PIJ90N7"
+      }
+    }
+  }
+}
