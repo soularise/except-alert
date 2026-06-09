@@ -91,3 +91,32 @@ test('stripe charge.refunded — deep assertions', async (t) => {
   assert.equal(event.tenant_id, DEFAULT_TENANT_ID)
   assert.equal(event.occurred_at.getTime(), new Date(1748875800 * 1000).getTime())
 })
+
+test('stripe payment_intent.succeeded — deep assertions', async (t) => {
+  let hookId
+
+  t.after(async () => {
+    if (hookId) await sql`DELETE FROM events WHERE hook_id = ${hookId}`
+  })
+
+  const body = fixture('stripe-payment-intent-succeeded.json')
+  const res = await postToRelay('stripe', body)
+  const text = await res.text()
+  assert.equal(res.status, 200, `Relay returned ${res.status}: ${text}`)
+  const data = JSON.parse(text)
+  hookId = data.hook_id
+  assert.ok(hookId, 'Relay response missing hook_id')
+
+  const [event] = await sql`SELECT * FROM events WHERE hook_id = ${hookId}`
+  assert.ok(event, `No event row found for hook_id ${hookId}`)
+
+  assert.equal(event.source, 'stripe')
+  assert.equal(event.severity, 'info')
+  assert.equal(event.category, 'stripe.payment_intent.succeeded')
+  assert.equal(event.title, 'payment_intent.succeeded: pi_3NzQKL2eZvKYlo2C0PISucc')
+  assert.equal(event.description, '')
+  assert.deepEqual(event.tags, { charge_id: 'pi_3NzQKL2eZvKYlo2C0PISucc' })
+  assert.deepEqual(event.payload, body)
+  assert.equal(event.tenant_id, DEFAULT_TENANT_ID)
+  assert.equal(event.occurred_at.getTime(), new Date(1748879400 * 1000).getTime())
+})
