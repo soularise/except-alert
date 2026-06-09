@@ -120,3 +120,24 @@ test('stripe payment_intent.succeeded — deep assertions', async (t) => {
   assert.equal(event.tenant_id, DEFAULT_TENANT_ID)
   assert.equal(event.occurred_at.getTime(), new Date(1748879400 * 1000).getTime())
 })
+
+test('github workflow-run-failed — shallow smoke test', async (t) => {
+  let hookId
+
+  t.after(async () => {
+    if (hookId) await sql`DELETE FROM events WHERE hook_id = ${hookId}`
+  })
+
+  const body = fixture('github-workflow-run-failed.json')
+  const res = await postToRelay('github', body)
+  const text = await res.text()
+  assert.equal(res.status, 200, `Relay returned ${res.status}: ${text}`)
+  const data = JSON.parse(text)
+  hookId = data.hook_id
+  assert.ok(hookId, 'Relay response missing hook_id')
+
+  const [event] = await sql`SELECT * FROM events WHERE hook_id = ${hookId}`
+  assert.ok(event, `No event row found for hook_id ${hookId}`)
+  assert.equal(event.source, 'github')
+  assert.equal(event.tenant_id, DEFAULT_TENANT_ID)
+})
