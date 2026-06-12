@@ -70,4 +70,14 @@ export const PROVIDERS: ProviderDef[] = [
     signatureLabel: 'HMAC-SHA256',
     docsUrl: '',
   },
+  {
+    id: 'vercel',
+    name: 'Vercel',
+    icon: '▲',
+    description: 'Deployment lifecycle events (success, error, cancel, promote)',
+    signatureHeader: 'x-vercel-signature',
+    signatureAlgorithm: 'hmac-sha256',
+    signatureLabel: 'HMAC-SHA256',
+    docsUrl: 'https://vercel.com/docs/deployments/webhooks',
+  },
 ]
