@@ -14,17 +14,25 @@ export async function POST(
   if (!access) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
-    const [row] = await db
-      .select()
-      .from(settings)
-      .where(and(eq(settings.tenantId, access.tenant.id), eq(settings.key, 'slack_webhook_url')))
-      .limit(1)
+    let webhookUrl: string | null = null
 
-    if (!row?.value) {
+    const body = await request.json().catch(() => ({}))
+    if (typeof body?.slack_webhook_url === 'string' && body.slack_webhook_url.trim()) {
+      webhookUrl = body.slack_webhook_url.trim()
+    } else {
+      const [row] = await db
+        .select()
+        .from(settings)
+        .where(and(eq(settings.tenantId, access.tenant.id), eq(settings.key, 'slack_webhook_url')))
+        .limit(1)
+      webhookUrl = row?.value ?? null
+    }
+
+    if (!webhookUrl) {
       return NextResponse.json({ error: 'No Slack webhook URL configured' }, { status: 400 })
     }
 
-    await sendSlackAlert(row.value, 'ExceptAlert: Test message. Slack alerts are working.')
+    await sendSlackAlert(webhookUrl, 'ExceptAlert: Test message. Slack alerts are working.')
     return NextResponse.json({ ok: true })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'

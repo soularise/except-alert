@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { settings } from '@/lib/db/schema'
 import { requireTenantAccess } from '@/lib/auth-guard'
+
+const NOTIFICATION_KEYS = ['slack_webhook_url', 'telegram_bot_token', 'telegram_chat_id'] as const
+type NotificationKey = (typeof NOTIFICATION_KEYS)[number]
 
 export async function GET(
   request: NextRequest,
@@ -13,12 +16,21 @@ export async function GET(
   if (!access) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
-    const [row] = await db
+    const rows = await db
       .select()
       .from(settings)
-      .where(and(eq(settings.tenantId, access.tenant.id), eq(settings.key, 'slack_webhook_url')))
-      .limit(1)
-    return NextResponse.json({ slack_webhook_url: row?.value ?? null })
+      .where(
+        and(
+          eq(settings.tenantId, access.tenant.id),
+          inArray(settings.key, [...NOTIFICATION_KEYS])
+        )
+      )
+    const values = Object.fromEntries(rows.map((r) => [r.key, r.value]))
+    return NextResponse.json({
+      slack_webhook_url: values['slack_webhook_url'] ?? null,
+      telegram_bot_token: values['telegram_bot_token'] ?? null,
+      telegram_chat_id: values['telegram_chat_id'] ?? null,
+    })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -39,24 +51,29 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { slack_webhook_url } = body as { slack_webhook_url?: unknown }
-  if (typeof slack_webhook_url !== 'string') {
-    return NextResponse.json({ error: 'slack_webhook_url is required' }, { status: 400 })
+  const updates: { key: NotificationKey; value: string }[] = []
+  for (const key of NOTIFICATION_KEYS) {
+    const val = (body as Record<string, unknown>)[key]
+    if (typeof val === 'string') {
+      updates.push({ key, value: val.trim() })
+    }
+  }
+
+  if (updates.length === 0) {
+    return NextResponse.json({ error: 'No valid fields provided' }, { status: 400 })
   }
 
   try {
-    await db
-      .insert(settings)
-      .values({
-        tenantId: access.tenant.id,
-        key: 'slack_webhook_url',
-        value: slack_webhook_url.trim(),
-      })
-      .onConflictDoUpdate({
-        target: [settings.tenantId, settings.key],
-        set: { value: slack_webhook_url.trim(), updatedAt: new Date() },
-      })
-    return NextResponse.json({ slack_webhook_url: slack_webhook_url.trim() })
+    for (const { key, value } of updates) {
+      await db
+        .insert(settings)
+        .values({ tenantId: access.tenant.id, key, value })
+        .onConflictDoUpdate({
+          target: [settings.tenantId, settings.key],
+          set: { value, updatedAt: new Date() },
+        })
+    }
+    return NextResponse.json({ ok: true })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

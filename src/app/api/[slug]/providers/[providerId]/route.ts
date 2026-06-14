@@ -12,7 +12,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   const access = await requireTenantAccess(request, slug, 'viewer')
   if (!access) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const providerDef = PROVIDERS.find((p) => p.id === providerId)
+  const providerDef = PROVIDERS.find((p) => p.id === providerId && !p.hidden)
   if (!providerDef) return NextResponse.json({ error: 'Provider not found' }, { status: 404 })
 
   const relayUrl = process.env.RELAY_URL ?? (() => {
@@ -50,7 +50,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
   const access = await requireTenantAccess(request, slug, 'admin')
   if (!access) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const providerDef = PROVIDERS.find((p) => p.id === providerId)
+  const providerDef = PROVIDERS.find((p) => p.id === providerId && !p.hidden)
   if (!providerDef) return NextResponse.json({ error: 'Provider not found' }, { status: 404 })
 
   let body: unknown
@@ -110,7 +110,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   const access = await requireTenantAccess(request, slug, 'admin')
   if (!access) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const providerDef = PROVIDERS.find((p) => p.id === providerId)
+  const providerDef = PROVIDERS.find((p) => p.id === providerId && !p.hidden)
   if (!providerDef) return NextResponse.json({ error: 'Provider not found' }, { status: 404 })
 
   try {

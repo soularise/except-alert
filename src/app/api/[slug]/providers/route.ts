@@ -28,7 +28,7 @@ export async function GET(
 
     const configuredIds = new Set(rows.map((r) => r.providerId))
 
-    const providers = PROVIDERS.map((p) => ({
+    const providers = PROVIDERS.filter((p) => !p.hidden).map((p) => ({
       id: p.id,
       name: p.name,
       icon: p.icon,

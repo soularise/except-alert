@@ -10,11 +10,13 @@ export type ProviderDef = {
   signatureLabel: string
   docsUrl: string
   eventCategories: EventCategory[]
+  hidden?: boolean
 }
 
 export const PROVIDERS: ProviderDef[] = [
   {
     id: 'stripe',
+    hidden: true,
     name: 'Stripe',
     icon: '🔒',
     description: 'Payment events, charge failures, disputes',
@@ -48,6 +50,7 @@ export const PROVIDERS: ProviderDef[] = [
   },
   {
     id: 'pagerduty',
+    hidden: true,
     name: 'PagerDuty',
     icon: '🚨',
     description: 'Incident lifecycle events',
@@ -65,6 +68,7 @@ export const PROVIDERS: ProviderDef[] = [
   },
   {
     id: 'sentry',
+    hidden: true,
     name: 'Sentry',
     icon: '📡',
     description: 'Error and crash report events',
@@ -81,6 +85,7 @@ export const PROVIDERS: ProviderDef[] = [
   },
   {
     id: 'datadog',
+    hidden: true,
     name: 'Datadog',
     icon: '📊',
     description: 'Metric alerts and monitor notifications',
@@ -94,6 +99,7 @@ export const PROVIDERS: ProviderDef[] = [
   },
   {
     id: 'facility-cms',
+    hidden: true,
     name: 'Facility CMS',
     icon: '🏥',
     description: 'Nursing home rating/ownership changes',
