@@ -14,7 +14,9 @@ import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
@@ -28,6 +30,7 @@ import {
 } from '@/components/ui/table'
 import { useTenant } from '@/components/TenantProvider'
 import { PageHeader } from '@/components/PageHeader'
+import type { EventCategory } from '@/lib/providers'
 
 function formatLastAlerted(iso: string | null): string {
   if (!iso) return 'Never'
@@ -56,10 +59,17 @@ interface Baseline {
   createdAt: string
 }
 
+interface ProviderGroup {
+  providerId: string
+  providerName: string
+  categories: EventCategory[]
+}
+
 export default function BaselinesPage() {
   const { tenant } = useTenant()
   const [baselineList, setBaselineList] = useState<Baseline[]>([])
   const [loading, setLoading] = useState(true)
+  const [providerGroups, setProviderGroups] = useState<ProviderGroup[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingBaseline, setEditingBaseline] = useState<Baseline | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -77,6 +87,24 @@ export default function BaselinesPage() {
     } finally {
       setLoading(false)
     }
+  }, [tenant.slug])
+
+  useEffect(() => {
+    fetch(`/api/${tenant.slug}/providers`)
+      .then((r) => r.json())
+      .then((data) => {
+        const groups: ProviderGroup[] = (data.providers ?? [])
+          .filter((p: { configured: boolean; eventCategories?: EventCategory[] }) =>
+            p.configured && p.eventCategories && p.eventCategories.length > 0
+          )
+          .map((p: { id: string; name: string; eventCategories: EventCategory[] }) => ({
+            providerId: p.id,
+            providerName: p.name,
+            categories: p.eventCategories,
+          }))
+        setProviderGroups(groups)
+      })
+      .catch(() => {})
   }, [tenant.slug])
 
   useEffect(() => {
@@ -229,13 +257,33 @@ export default function BaselinesPage() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="bl-category">Category</Label>
-                <Input
-                  id="bl-category"
-                  placeholder="e.g. stripe.charge.failed"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                />
+                <Label>Category</Label>
+                {providerGroups.length > 0 ? (
+                  <Select
+                    value={category}
+                    onValueChange={(v) => { if (v) setCategory(v) }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select an event type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {providerGroups.map((group) => (
+                        <SelectGroup key={group.providerId}>
+                          <SelectLabel>{group.providerName}</SelectLabel>
+                          {group.categories.map((cat) => (
+                            <SelectItem key={cat.value} value={cat.value}>
+                              {cat.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No providers configured yet. Set up a provider first.
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="bl-threshold">Threshold (events)</Label>

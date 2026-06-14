@@ -15,7 +15,12 @@ export async function GET(request: NextRequest, { params }: Params) {
   const providerDef = PROVIDERS.find((p) => p.id === providerId)
   if (!providerDef) return NextResponse.json({ error: 'Provider not found' }, { status: 404 })
 
-  const relayUrl = process.env.RELAY_URL ?? 'http://localhost:3800'
+  const relayUrl = process.env.RELAY_URL ?? (() => {
+    const proto = request.headers.get('x-forwarded-proto') ?? 'http'
+    const hostHeader = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? 'localhost'
+    const hostname = hostHeader.split(':')[0]
+    return `${proto}://${hostname}:3800`
+  })()
 
   try {
     const [row] = await db

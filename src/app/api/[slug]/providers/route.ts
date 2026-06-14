@@ -13,7 +13,12 @@ export async function GET(
   const access = await requireTenantAccess(request, slug, 'viewer')
   if (!access) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const relayUrl = process.env.RELAY_URL ?? 'http://localhost:3800'
+  const relayUrl = process.env.RELAY_URL ?? (() => {
+    const proto = request.headers.get('x-forwarded-proto') ?? 'http'
+    const hostHeader = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? 'localhost'
+    const hostname = hostHeader.split(':')[0]
+    return `${proto}://${hostname}:3800`
+  })()
 
   try {
     const rows = await db
@@ -32,6 +37,7 @@ export async function GET(
       signatureAlgorithm: p.signatureAlgorithm,
       signatureLabel: p.signatureLabel,
       docsUrl: p.docsUrl,
+      eventCategories: p.eventCategories,
       configured: configuredIds.has(p.id),
       webhookUrl: `${relayUrl}/hook/${slug}/${p.id}`,
     }))
