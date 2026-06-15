@@ -25,7 +25,9 @@ import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
@@ -39,6 +41,7 @@ import {
 } from '@/components/ui/table'
 import { useTenant } from '@/components/TenantProvider'
 import { PageHeader } from '@/components/PageHeader'
+import type { EventCategory } from '@/lib/providers'
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const
 
@@ -67,10 +70,17 @@ interface ActionTemplate {
   createdAt: string
 }
 
+interface ProviderGroup {
+  providerId: string
+  providerName: string
+  categories: EventCategory[]
+}
+
 export default function TemplatesPage() {
   const { tenant } = useTenant()
   const [templates, setTemplates] = useState<ActionTemplate[]>([])
   const [loading, setLoading] = useState(true)
+  const [providerGroups, setProviderGroups] = useState<ProviderGroup[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<ActionTemplate | null>(
     null
@@ -102,6 +112,24 @@ export default function TemplatesPage() {
   useEffect(() => {
     fetchTemplates()
   }, [fetchTemplates])
+
+  useEffect(() => {
+    fetch(`/api/${tenant.slug}/providers`)
+      .then((r) => r.json())
+      .then((data) => {
+        const groups: ProviderGroup[] = (data.providers ?? [])
+          .filter((p: { configured: boolean; eventCategories?: EventCategory[] }) =>
+            p.configured && p.eventCategories && p.eventCategories.length > 0
+          )
+          .map((p: { id: string; name: string; eventCategories: EventCategory[] }) => ({
+            providerId: p.id,
+            providerName: p.name,
+            categories: p.eventCategories,
+          }))
+        setProviderGroups(groups)
+      })
+      .catch(() => {})
+  }, [tenant.slug])
 
   function openAddDialog() {
     setEditingTemplate(null)
@@ -271,20 +299,43 @@ export default function TemplatesPage() {
                 onSubmit={form.handleSubmit(onSubmit)}
                 className="space-y-4"
               >
-                <FormField
+                <Controller
                   control={form.control}
                   name="category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Category</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="e.g. stripe.charge.failed"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                  render={({ field, fieldState }) => (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium leading-none">
+                        Category
+                      </label>
+                      {providerGroups.length > 0 ? (
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select an event type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {providerGroups.map((group) => (
+                              <SelectGroup key={group.providerId}>
+                                <SelectLabel>{group.providerName}</SelectLabel>
+                                {group.categories.map((cat) => (
+                                  <SelectItem key={cat.value} value={cat.value}>
+                                    {cat.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          No providers configured yet. Set up a provider first.
+                        </p>
+                      )}
+                      {fieldState.error && (
+                        <p className="text-sm font-medium text-destructive">
+                          {fieldState.error.message}
+                        </p>
+                      )}
+                    </div>
                   )}
                 />
 
