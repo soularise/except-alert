@@ -113,22 +113,24 @@ export default function TeamPage() {
           Team invitations are available when authentication is enabled.
         </div>
       ) : (
-        <form onSubmit={inviteMember} className="mb-8 flex max-w-3xl flex-wrap items-end gap-3">
-          <div className="space-y-2">
+        <form
+          onSubmit={inviteMember}
+          className="mb-8 grid max-w-3xl gap-3 sm:grid-cols-[minmax(18rem,1fr)_12rem_auto] sm:items-end"
+        >
+          <div className="grid gap-2">
             <Label htmlFor="invite-email">Email</Label>
             <Input
               id="invite-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-72"
               required
             />
           </div>
-          <div className="space-y-2">
-            <Label>Role</Label>
+          <div className="grid gap-2">
+            <Label htmlFor="invite-role">Role</Label>
             <Select value={role} onValueChange={(value) => value && setRole(value)}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger id="invite-role" className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -138,7 +140,7 @@ export default function TeamPage() {
               </SelectContent>
             </Select>
           </div>
-          <Button type="submit" disabled={submitting}>
+          <Button type="submit" className="w-full sm:w-auto" disabled={submitting}>
             {submitting ? 'Inviting...' : 'Invite'}
           </Button>
         </form>

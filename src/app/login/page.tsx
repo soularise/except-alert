@@ -64,7 +64,12 @@ function LoginForm() {
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="password">Password</Label>
+          <div className="flex items-center justify-between gap-3">
+            <Label htmlFor="password">Password</Label>
+            <Link href="/forgot-password" className="text-xs text-primary hover:underline">
+              Forgot password?
+            </Link>
+          </div>
           <Input
             id="password"
             type="password"
@@ -85,6 +90,11 @@ function LoginForm() {
           Sign up
         </Link>
       </p>
+      {searchParams.get('reset') === 'success' && (
+        <p className="mt-4 text-sm text-green-600">
+          Password updated. Sign in with your new password.
+        </p>
+      )}
     </>
   )
 }

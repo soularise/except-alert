@@ -4,6 +4,7 @@ import { db } from './db'
 import * as schema from './db/schema'
 
 const authSecret = process.env.BETTER_AUTH_SECRET
+const passwordResetMode = process.env.EXCEPTALERT_PASSWORD_RESET_MODE ?? 'operator-log'
 
 if (
   process.env.NODE_ENV === 'production' &&
@@ -23,7 +24,25 @@ export const auth = betterAuth({
       verification: schema.authVerification,
     },
   }),
-  emailAndPassword: { enabled: true },
+  emailAndPassword: {
+    enabled: true,
+    resetPasswordTokenExpiresIn: 60 * 60,
+    revokeSessionsOnPasswordReset: true,
+    ...(passwordResetMode === 'disabled'
+      ? {}
+      : {
+          sendResetPassword: async ({ user, url }) => {
+            console.info(
+              [
+                '[ExceptAlert password reset]',
+                `Manual reset requested for ${user.email}.`,
+                'Verify the requester out of band, then share this one-use link:',
+                url,
+              ].join('\n')
+            )
+          },
+        }),
+  },
   databaseHooks: {
     user: {
       create: {
