@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react'
 import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { authClient } from '@/lib/auth-client'
 import { AuthPanel } from '@/components/AuthPanel'
@@ -24,9 +24,8 @@ export default function SignupPage() {
 }
 
 function SignupForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
-  const returnTo = searchParams.get('returnTo')
+  const returnTo = getSafeReturnTo(searchParams.get('returnTo'))
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -34,24 +33,29 @@ function SignupForm() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.SyntheticEvent) {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
-    const { error: authError } = await authClient.signUp.email({
-      name,
-      email,
-      password
-    })
-    setLoading(false)
+    try {
+      const { error: authError } = await authClient.signUp.email({
+        name,
+        email,
+        password
+      })
 
-    if (authError) {
-      setError(authError.message ?? 'Sign up failed')
-      return
+      if (authError) {
+        setError(authError.message ?? 'Sign up failed')
+        return
+      }
+
+      window.location.assign(returnTo ?? '/')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sign up failed')
+    } finally {
+      setLoading(false)
     }
-
-    router.push(returnTo ?? '/')
   }
 
   return (
@@ -93,7 +97,7 @@ function SignupForm() {
           />
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button type="button" className="w-full" disabled={loading} onClick={handleSubmit}>
           {loading ? 'Creating account…' : 'Create account'}
         </Button>
       </form>
@@ -105,4 +109,10 @@ function SignupForm() {
       </p>
     </>
   )
+}
+
+function getSafeReturnTo(value: string | null) {
+  if (!value) return null
+  if (!value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return null
+  return value
 }

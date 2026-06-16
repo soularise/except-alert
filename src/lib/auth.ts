@@ -5,6 +5,15 @@ import * as schema from './db/schema'
 
 const authSecret = process.env.BETTER_AUTH_SECRET
 const passwordResetMode = process.env.EXCEPTALERT_PASSWORD_RESET_MODE ?? 'operator-log'
+const authBaseUrl = process.env.BETTER_AUTH_URL ?? 'http://localhost:3000'
+const defaultTrustedOrigins = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  process.env.BETTER_AUTH_URL,
+  process.env.EXCEPTALERT_APP_URL,
+]
+  .filter((origin): origin is string => Boolean(origin))
+  .map((origin) => new URL(origin).origin)
 
 if (
   process.env.NODE_ENV === 'production' &&
@@ -61,5 +70,6 @@ export const auth = betterAuth({
     },
   },
   secret:  authSecret ?? 'except-alert-local-dev-secret-change-me',
-  baseURL: process.env.BETTER_AUTH_URL ?? 'http://localhost:3000',
+  baseURL: authBaseUrl,
+  trustedOrigins: Array.from(new Set(defaultTrustedOrigins)),
 })

@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react'
 import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { authClient } from '@/lib/auth-client'
 import { AuthPanel } from '@/components/AuthPanel'
@@ -21,32 +21,36 @@ export default function LoginPage() {
 }
 
 function LoginForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
-  const returnTo = searchParams.get('returnTo')
+  const returnTo = getSafeReturnTo(searchParams.get('returnTo'))
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.SyntheticEvent) {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
-    const { error: authError } = await authClient.signIn.email({
-      email,
-      password
-    })
-    setLoading(false)
+    try {
+      const { error: authError } = await authClient.signIn.email({
+        email,
+        password
+      })
 
-    if (authError) {
-      setError(authError.message ?? 'Invalid email or password')
-      return
+      if (authError) {
+        setError(authError.message ?? 'Invalid email or password')
+        return
+      }
+
+      window.location.assign(returnTo ?? '/')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sign in failed')
+    } finally {
+      setLoading(false)
     }
-
-    router.push(returnTo ?? '/')
   }
 
   return (
@@ -80,7 +84,7 @@ function LoginForm() {
           />
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button type="button" className="w-full" disabled={loading} onClick={handleSubmit}>
           {loading ? 'Signing in…' : 'Sign in'}
         </Button>
       </form>
@@ -97,4 +101,10 @@ function LoginForm() {
       )}
     </>
   )
+}
+
+function getSafeReturnTo(value: string | null) {
+  if (!value) return null
+  if (!value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return null
+  return value
 }

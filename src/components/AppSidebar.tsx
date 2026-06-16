@@ -1,8 +1,18 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, FileCode2, BarChart2, Settings, LogOut, ShieldAlert } from 'lucide-react'
+import {
+  LayoutDashboard,
+  FileCode2,
+  BarChart2,
+  Settings,
+  LogOut,
+  ShieldAlert,
+  User,
+  UserPlus,
+} from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { Separator } from '@/components/ui/separator'
 import { PaletteToggle } from '@/components/PaletteToggle'
@@ -15,7 +25,12 @@ interface AppSidebarProps {
 export function AppSidebar({ slug, authDisabled = false }: AppSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const { data: session } = authClient.useSession()
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false)
   const base = `/${slug}`
+  const userName = authDisabled ? 'Local developer' : session?.user.name?.trim()
+  const userEmail = authDisabled ? null : session?.user.email
+  const userLabel = userName || userEmail || null
 
   const navItems = [
     { label: 'Events',    href: `${base}/dashboard`,  icon: LayoutDashboard },
@@ -25,6 +40,8 @@ export function AppSidebar({ slug, authDisabled = false }: AppSidebarProps) {
   ]
 
   function isActive(href: string) {
+    if (href === '/admin/provision') return pathname === href
+
     if (href === `${base}/dashboard`) {
       return (
         pathname === href ||
@@ -42,6 +59,24 @@ export function AppSidebar({ slug, authDisabled = false }: AppSidebarProps) {
     router.push('/login')
   }
 
+  useEffect(() => {
+    if (authDisabled) return
+
+    let cancelled = false
+    fetch('/api/admin/status')
+      .then((res) => (res.ok ? res.json() : { isPlatformAdmin: false }))
+      .then((data) => {
+        if (!cancelled) setIsPlatformAdmin(Boolean(data.isPlatformAdmin ?? data.isAdmin))
+      })
+      .catch(() => {
+        if (!cancelled) setIsPlatformAdmin(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [authDisabled])
+
   return (
     <aside className="flex w-60 flex-col bg-sidebar">
       {/* Brand */}
@@ -51,6 +86,27 @@ export function AppSidebar({ slug, authDisabled = false }: AppSidebarProps) {
           <p className="font-semibold text-sidebar-foreground">ExceptAlert</p>
         </div>
         <p className="mt-0.5 text-xs text-sidebar-foreground/50 pl-7">Event monitor</p>
+        {userLabel && (
+          <div className="mt-4 flex min-w-0 items-center gap-2 rounded-md border border-sidebar-border/70 bg-sidebar-accent/40 px-3 py-2">
+            <User className="h-4 w-4 shrink-0 text-sidebar-foreground/50" />
+            <div className="min-w-0">
+              <p
+                className="truncate text-sm font-medium text-sidebar-foreground"
+                title={userLabel}
+              >
+                {userLabel}
+              </p>
+              {userEmail && userEmail !== userLabel && (
+                <p
+                  className="truncate text-xs text-sidebar-foreground/50"
+                  title={userEmail}
+                >
+                  {userEmail}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <Separator className="bg-sidebar-border" />
@@ -75,6 +131,25 @@ export function AppSidebar({ slug, authDisabled = false }: AppSidebarProps) {
           </Link>
         ))}
       </nav>
+
+      {isPlatformAdmin && (
+        <nav className="flex flex-col gap-1 px-2 pt-4">
+          <p className="mb-1 px-3 text-xs font-medium uppercase tracking-widest text-sidebar-foreground/30">
+            Platform
+          </p>
+          <Link
+            href="/admin/provision"
+            className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
+              isActive('/admin/provision')
+                ? 'bg-primary/10 text-primary'
+                : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+            }`}
+          >
+            <UserPlus className="h-4 w-4 shrink-0" />
+            Provision
+          </Link>
+        </nav>
+      )}
 
       {/* Footer */}
       <div className="mt-auto">

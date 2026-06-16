@@ -47,6 +47,17 @@ DATABASE_URL=postgres://relay:relay@localhost:5432/relay npx drizzle-kit migrate
 
 When running via Docker Compose, apply migrations against the exposed Postgres port (5432) before or after `docker compose up`.
 
+### Admin provisioning
+
+The admin provisioning page is available at `/admin/provision` for configured admin emails.
+
+```bash
+EXCEPTALERT_ADMIN_EMAILS=hello@exceptalert.com,droidsafari@gmail.com
+EXCEPTALERT_APP_URL=https://app.exceptalert.com
+```
+
+Provisioning creates a customer user, credential login, tenant, and owner membership. The page shows a one-time temporary password; after signing in, the customer should update it from Settings -> Account.
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
