@@ -31,7 +31,7 @@ export const auth = betterAuth({
     ...(passwordResetMode === 'disabled'
       ? {}
       : {
-          sendResetPassword: async ({ user, url }) => {
+          sendResetPassword: async ({ user, url }, request) => {
             console.info(
               [
                 '[ExceptAlert password reset]',
@@ -40,6 +40,13 @@ export const auth = betterAuth({
                 url,
               ].join('\n')
             )
+
+            try {
+              const { createPasswordResetRequestEvents } = await import('./password-reset-events')
+              await createPasswordResetRequestEvents({ user, resetUrl: url, request })
+            } catch (err) {
+              console.error('[password reset] failed to create ExceptAlert event:', err)
+            }
           },
         }),
   },
