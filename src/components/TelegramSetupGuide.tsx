@@ -140,20 +140,10 @@ export function TelegramSetupGuide({ open, onOpenChange, onComplete }: Props) {
                 so your bot has something to see.
               </li>
               <li>
-                Open this URL in your browser, replacing{' '}
-                <code className="rounded bg-muted px-1">TOKEN</code> with your
-                bot token:
-                <div className="mt-1.5 break-all rounded bg-muted px-2 py-1.5 font-mono text-xs">
-                  https://api.telegram.org/bot
-                  <span className="text-primary">TOKEN</span>
-                  /getUpdates
-                </div>
+                Search for @userinfobot on Telegram.
               </li>
               <li>
-                Find the{' '}
-                <code className="rounded bg-muted px-1">chat.id</code> value in
-                the JSON response. Channel IDs begin with{' '}
-                <code className="rounded bg-muted px-1">-100</code>.
+                Send any message, and the bot will instantly reply with your numeric User ID. Copy this number (e.g., 123456789).
               </li>
             </ol>
             <div className="space-y-2">
