@@ -141,8 +141,8 @@ export default function BaselinesPage() {
       setFormError('Category is required')
       return
     }
-    if (isNaN(thresholdNum) || thresholdNum < 1) {
-      setFormError('Threshold must be a positive number')
+    if (isNaN(thresholdNum) || thresholdNum < 0) {
+      setFormError('Threshold must be zero or a positive number')
       return
     }
 
@@ -303,8 +303,8 @@ export default function BaselinesPage() {
                 <Input
                   id="bl-threshold"
                   type="number"
-                  min={1}
-                  placeholder="e.g. 10"
+                  min={0}
+                  placeholder="e.g. 0"
                   value={threshold}
                   onChange={(e) => setThreshold(e.target.value)}
                 />
@@ -367,7 +367,8 @@ export default function BaselinesPage() {
                   <p className="font-medium text-foreground">Threshold</p>
                   <p className="mt-1 text-muted-foreground">
                     The app alerts only when matching events are greater than this number. A
-                    threshold of <code>1</code> alerts on the second matching event.
+                    threshold of <code>0</code> alerts on the first matching event,{' '}
+                    <code>1</code> alerts on the second, and <code>5</code> alerts on the sixth.
                   </p>
                 </div>
                 <div>

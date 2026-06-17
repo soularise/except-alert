@@ -27,7 +27,7 @@ export async function PATCH(
 
   const updates: Partial<typeof baselines.$inferInsert> = {}
   if (typeof category === 'string') updates.category = category.trim()
-  if (typeof threshold === 'number' && threshold >= 1) updates.threshold = threshold
+  if (typeof threshold === 'number' && threshold >= 0) updates.threshold = threshold
   if (typeof window_minutes === 'number' && window_minutes >= 1) {
     updates.windowMinutes = window_minutes
   }

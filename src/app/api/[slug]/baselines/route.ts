@@ -48,8 +48,11 @@ export async function POST(
   if (typeof category !== 'string' || !category.trim()) {
     return NextResponse.json({ error: 'category is required' }, { status: 400 })
   }
-  if (typeof threshold !== 'number' || threshold < 1) {
-    return NextResponse.json({ error: 'threshold must be a positive number' }, { status: 400 })
+  if (typeof threshold !== 'number' || threshold < 0) {
+    return NextResponse.json(
+      { error: 'threshold must be zero or a positive number' },
+      { status: 400 }
+    )
   }
   if (typeof window_minutes !== 'number' || window_minutes < 1) {
     return NextResponse.json({ error: 'window_minutes must be a positive number' }, { status: 400 })
