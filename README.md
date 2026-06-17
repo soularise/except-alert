@@ -58,6 +58,18 @@ EXCEPTALERT_APP_URL=https://app.exceptalert.com
 
 Provisioning creates a customer user, credential login, tenant, and owner membership. The page shows a one-time temporary password; after signing in, the customer should update it from Settings -> Account.
 
+### Baseline notifications
+
+Slack and Telegram notifications are sent for baseline breaches, not for every event. Configure notification channels in Settings, then create one or more baselines from the Baselines page.
+
+Each baseline has:
+
+- Category: the event category to watch, such as `github.workflow_run`.
+- Threshold: the allowed number of matching events within the selected window.
+- Window: the lookback period used when counting matching events. Current options are 15 min, 30 min, 60 min, 6 hours, and 24 hours.
+
+Alerts are sent only when the matching event count is greater than the threshold. For example, a threshold of `1` with a 15 minute window alerts on the second matching event within 15 minutes. After an alert is sent, that baseline cools down for the length of its window before it can alert again.
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
