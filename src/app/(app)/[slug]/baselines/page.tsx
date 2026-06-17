@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import { Info } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -71,6 +73,7 @@ export default function BaselinesPage() {
   const [loading, setLoading] = useState(true)
   const [providerGroups, setProviderGroups] = useState<ProviderGroup[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [helpDialogOpen, setHelpDialogOpen] = useState(false)
   const [editingBaseline, setEditingBaseline] = useState<Baseline | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
@@ -195,7 +198,17 @@ export default function BaselinesPage() {
               Alert when event counts exceed thresholds
             </p>
           </div>
-          <Button onClick={openAddDialog}>Add Baseline</Button>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setHelpDialogOpen(true)}
+            >
+              <Info className="size-4" />
+              How alerts work
+            </Button>
+            <Button onClick={openAddDialog}>Add Baseline</Button>
+          </div>
         </div>
 
         {loading ? (
@@ -329,6 +342,49 @@ export default function BaselinesPage() {
                 </Button>
               </DialogFooter>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={helpDialogOpen} onOpenChange={setHelpDialogOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>How baseline alerts work</DialogTitle>
+              <DialogDescription>
+                Slack and Telegram notifications are sent for baseline breaches, not for every
+                event.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 text-sm">
+              <div className="grid gap-3 rounded-md border border-border/70 bg-muted/30 p-4">
+                <div>
+                  <p className="font-medium text-foreground">Category</p>
+                  <p className="mt-1 text-muted-foreground">
+                    Watches one event category, such as <code>github.workflow_run</code>.
+                  </p>
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">Threshold</p>
+                  <p className="mt-1 text-muted-foreground">
+                    The app alerts only when matching events are greater than this number. A
+                    threshold of <code>1</code> alerts on the second matching event.
+                  </p>
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">Window</p>
+                  <p className="mt-1 text-muted-foreground">
+                    The lookback period used for the count, such as the last 15 minutes.
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-muted-foreground">
+                After an alert is sent, that baseline cools down for the same length as its
+                window before it can alert again.
+              </p>
+            </div>
+
+            <DialogFooter showCloseButton />
           </DialogContent>
         </Dialog>
       </div>
