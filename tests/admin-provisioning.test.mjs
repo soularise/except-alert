@@ -59,6 +59,18 @@ test('admin provisioning creates a credential account with a temporary password'
   assert.match(source, /role: 'owner'/)
 })
 
+test('self-service signup is disabled for provisioned accounts', () => {
+  const auth = read('src/lib/auth.ts')
+  assert.match(auth, /disableSignUp:\s*true/)
+
+  const login = read('src/app/login/page.tsx')
+  assert.doesNotMatch(login, /href="\/signup"/)
+
+  const signup = read('src/app/signup/page.tsx')
+  assert.match(signup, /redirect\('\/login\?signup=disabled'\)/)
+  assert.doesNotMatch(signup, /authClient\.signUp\.email/)
+})
+
 test('admin provisioning instructions do not use forgot password onboarding', () => {
   const client = read('src/app/admin/provision/ProvisionClient.tsx')
   assert.match(client, /Temporary password/)

@@ -88,12 +88,11 @@ function LoginForm() {
           {loading ? 'Signing in…' : 'Sign in'}
         </Button>
       </form>
-      <p className="mt-6 border-t border-border/60 pt-4 text-sm text-muted-foreground">
-        No account?{' '}
-        <Link href="/signup" className="text-primary hover:underline">
-          Sign up
-        </Link>
-      </p>
+      {searchParams.get('signup') === 'disabled' && (
+        <p className="mt-6 border-t border-border/60 pt-4 text-sm text-muted-foreground">
+          Accounts are provisioned by an ExceptAlert admin after subscription.
+        </p>
+      )}
       {searchParams.get('reset') === 'success' && (
         <p className="mt-4 text-sm text-green-600">
           Password updated. Sign in with your new password.
