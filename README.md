@@ -52,7 +52,7 @@ When running via Docker Compose, apply migrations against the exposed Postgres p
 The admin provisioning page is available at `/admin/provision` for configured admin emails.
 
 ```bash
-EXCEPTALERT_ADMIN_EMAILS=hello@exceptalert.com,droidsafari@gmail.com
+EXCEPTALERT_ADMIN_EMAILS=hello@exceptalert.com
 EXCEPTALERT_APP_URL=https://app.exceptalert.com
 ```
 
