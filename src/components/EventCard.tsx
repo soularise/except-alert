@@ -1,5 +1,7 @@
 import Link from 'next/link'
+import { Archive, Trash2 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/StatusBadge'
 import { cn } from '@/lib/utils'
 
@@ -39,38 +41,83 @@ function formatRelativeTime(isoString: string): string {
   return `${diffDay}d ago`
 }
 
-export function EventCard({ event, slug }: { event: Event; slug: string }) {
+interface EventCardProps {
+  event: Event
+  slug: string
+  busyAction?: 'archive' | 'delete' | null
+  onArchive?: (event: Event) => void
+  onDelete?: (event: Event) => void
+}
+
+export function EventCard({
+  event,
+  slug,
+  busyAction = null,
+  onArchive,
+  onDelete,
+}: EventCardProps) {
   const stripe = severityStripe[event.severity] ?? 'border-l-border'
 
   return (
-    <Link
-      href={`/${slug}/dashboard/${event.id}`}
-      className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl"
+    <Card
+      className={cn(
+        'border-l-4 border-border/50 shadow-sm transition-shadow hover:shadow-md',
+        stripe
+      )}
     >
-      <Card
-        className={cn(
-          'border-l-4 border-border/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer',
-          stripe
-        )}
-      >
-        <CardContent className="flex flex-col gap-2">
-          <div className="flex items-start justify-between gap-2">
-            <p className="font-semibold text-sm leading-snug">{event.title}</p>
+      <CardContent className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <Link
+            href={`/${slug}/dashboard/${event.id}`}
+            className="min-w-0 flex-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <p className="text-sm font-semibold leading-snug text-foreground">{event.title}</p>
+            {event.description && (
+              <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
+                {event.description}
+              </p>
+            )}
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <span className="inline-block size-1.5 rounded-full bg-muted-foreground/60" />
+                {event.source}
+              </span>
+              <span>{event.category}</span>
+              <span className="sm:ml-auto">{formatRelativeTime(event.receivedAt)}</span>
+            </div>
+          </Link>
+
+          <div className="flex shrink-0 items-center gap-2 sm:justify-end">
             <StatusBadge status={event.status ?? 'open'} />
+            {onArchive && event.status !== 'dismissed' && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                title="Archive event"
+                aria-label={`Archive ${event.title}`}
+                disabled={Boolean(busyAction)}
+                onClick={() => onArchive(event)}
+              >
+                <Archive className="size-3.5" />
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon-sm"
+                title="Delete event"
+                aria-label={`Delete ${event.title}`}
+                disabled={Boolean(busyAction)}
+                onClick={() => onDelete(event)}
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            )}
           </div>
-          {event.description && (
-            <p className="text-xs text-muted-foreground line-clamp-2">{event.description}</p>
-          )}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <span className="inline-block size-1.5 rounded-full bg-muted-foreground/60" />
-              {event.source}
-            </span>
-            <span>{event.category}</span>
-            <span className="ml-auto">{formatRelativeTime(event.receivedAt)}</span>
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

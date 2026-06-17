@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { and, count, desc, eq, gte, lt } from 'drizzle-orm'
+import { and, count, desc, eq, gte, isNull, lt, not, or } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { events } from '@/lib/db/schema'
 import { evaluateBaselines } from '@/lib/baselines'
@@ -22,21 +22,35 @@ export async function GET(
   const category = searchParams.get('category')
   const status = searchParams.get('status')
   const cursor = searchParams.get('cursor')
+  const rawOffset = searchParams.get('offset')
 
   const rawLimit = searchParams.get('limit')
   const parsedLimit = rawLimit ? parseInt(rawLimit, 10) : 50
   const limit = isNaN(parsedLimit) || parsedLimit < 1 ? 50 : Math.min(parsedLimit, 200)
+  const parsedOffset = rawOffset ? parseInt(rawOffset, 10) : 0
+  const offset = isNaN(parsedOffset) || parsedOffset < 0 ? 0 : parsedOffset
 
   try {
     const conditions = [eq(events.tenantId, access.tenant.id)]
     if (source) conditions.push(eq(events.source, source))
     if (severity && VALID_SEVERITIES.has(severity)) conditions.push(eq(events.severity, severity))
     if (category) conditions.push(eq(events.category, category))
-    if (status && VALID_STATUSES.has(status)) conditions.push(eq(events.status, status))
+    if (status && VALID_STATUSES.has(status)) {
+      conditions.push(eq(events.status, status))
+    } else {
+      const activeStatus = or(isNull(events.status), not(eq(events.status, 'dismissed')))
+      if (activeStatus) conditions.push(activeStatus)
+    }
     if (cursor) {
       const cursorDate = new Date(cursor)
       if (!isNaN(cursorDate.getTime())) conditions.push(lt(events.receivedAt, cursorDate))
     }
+
+    const whereClause = and(...conditions)
+    const [totalResult] = await db
+      .select({ value: count() })
+      .from(events)
+      .where(whereClause)
 
     const rows = await db
       .select({
@@ -53,8 +67,9 @@ export async function GET(
         status: events.status,
       })
       .from(events)
-      .where(and(...conditions))
+      .where(whereClause)
       .orderBy(desc(events.receivedAt))
+      .offset(cursor ? 0 : offset)
       .limit(limit + 1)
 
     let nextCursor: string | null = null
@@ -80,6 +95,7 @@ export async function GET(
         occurredAt: row.occurredAt.toISOString(),
       })),
       nextCursor,
+      totalCount: totalResult?.value ?? 0,
       recentCount: recentResult?.value ?? 0,
     })
   } catch {

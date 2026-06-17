@@ -1,14 +1,22 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { EventCard, type Event } from '@/components/EventCard'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import type { Filters } from '@/components/FilterBar'
 import { useTenant } from '@/components/TenantProvider'
 
 interface ApiResponse {
   events: Event[]
   nextCursor: string | null
+  totalCount: number
   recentCount: number
 }
 
@@ -17,13 +25,16 @@ interface EventTimelineProps {
   onRecentCount?: (count: number) => void
 }
 
-function buildUrl(slug: string, filters: Filters, cursor?: string | null): string {
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
+
+function buildUrl(slug: string, filters: Filters, page: number, pageSize: number): string {
   const params = new URLSearchParams()
   if (filters.source) params.set('source', filters.source)
   if (filters.severity) params.set('severity', filters.severity)
   if (filters.category) params.set('category', filters.category)
   if (filters.status) params.set('status', filters.status)
-  if (cursor) params.set('cursor', cursor)
+  params.set('limit', String(pageSize))
+  params.set('offset', String((page - 1) * pageSize))
   const qs = params.toString()
   return `/api/${slug}/events${qs ? `?${qs}` : ''}`
 }
@@ -31,27 +42,21 @@ function buildUrl(slug: string, filters: Filters, cursor?: string | null): strin
 export function EventTimeline({ filters, onRecentCount }: EventTimelineProps) {
   const { tenant } = useTenant()
   const [events, setEvents] = useState<Event[]>([])
-  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [totalCount, setTotalCount] = useState(0)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [loadingMore, setLoadingMore] = useState(false)
+  const [busyEvent, setBusyEvent] = useState<{ id: string; action: 'archive' | 'delete' } | null>(null)
 
-  const newestReceivedAt = useRef<string | null>(null)
-
-  const fetchInitial = useCallback(async () => {
+  const fetchCurrentPage = useCallback(async () => {
     setLoading(true)
-    setEvents([])
-    setNextCursor(null)
-    newestReceivedAt.current = null
     try {
-      const res = await fetch(buildUrl(tenant.slug, filters))
+      const res = await fetch(buildUrl(tenant.slug, filters, page, pageSize))
       if (!res.ok) throw new Error('Failed to fetch events')
       const data: ApiResponse = await res.json()
       setEvents(data.events)
-      setNextCursor(data.nextCursor)
-      if (data.events.length > 0) {
-        newestReceivedAt.current = data.events[0].receivedAt
-      }
+      setTotalCount(data.totalCount)
       onRecentCount?.(data.recentCount)
       setError(null)
     } catch (err) {
@@ -59,66 +64,78 @@ export function EventTimeline({ filters, onRecentCount }: EventTimelineProps) {
     } finally {
       setLoading(false)
     }
-  }, [filters, onRecentCount, tenant.slug])
+  }, [filters, onRecentCount, page, pageSize, tenant.slug])
 
   const poll = useCallback(async () => {
     try {
-      const res = await fetch(buildUrl(tenant.slug, filters))
+      const res = await fetch(buildUrl(tenant.slug, filters, 1, pageSize))
       if (!res.ok) return
       const data: ApiResponse = await res.json()
       onRecentCount?.(data.recentCount)
-
-      if (data.events.length === 0) return
-
-      const newest = newestReceivedAt.current
-      if (!newest) {
+      setTotalCount(data.totalCount)
+      if (page === 1) {
         setEvents(data.events)
-        setNextCursor(data.nextCursor)
-        newestReceivedAt.current = data.events[0].receivedAt
-        return
-      }
-
-      const newEvents = data.events.filter(
-        (e) => new Date(e.receivedAt) > new Date(newest)
-      )
-      if (newEvents.length > 0) {
-        newestReceivedAt.current = newEvents[0].receivedAt
-        setEvents((prev) => {
-          const existingIds = new Set(prev.map((e) => e.id))
-          const deduped = newEvents.filter((e) => !existingIds.has(e.id))
-          return [...deduped, ...prev]
-        })
       }
     } catch {
     }
-  }, [filters, onRecentCount, tenant.slug])
+  }, [filters, onRecentCount, page, pageSize, tenant.slug])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchInitial()
-  }, [fetchInitial])
+    fetchCurrentPage()
+  }, [fetchCurrentPage])
 
   useEffect(() => {
     const id = setInterval(poll, 5000)
     return () => clearInterval(id)
   }, [poll])
 
-  async function loadMore() {
-    if (!nextCursor) return
-    setLoadingMore(true)
+  async function archiveEvent(event: Event) {
+    setBusyEvent({ id: event.id, action: 'archive' })
     try {
-      const res = await fetch(buildUrl(tenant.slug, filters, nextCursor))
-      if (!res.ok) throw new Error('Failed to load more')
-      const data: ApiResponse = await res.json()
-      setEvents((prev) => [...prev, ...data.events])
-      setNextCursor(data.nextCursor)
+      const res = await fetch(`/api/${tenant.slug}/events/${event.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'dismissed' }),
+      })
+      if (!res.ok) throw new Error('Failed to archive event')
+      if (events.length === 1 && page > 1) {
+        setPage((current) => Math.max(1, current - 1))
+      } else {
+        await fetchCurrentPage()
+      }
     } catch {
+      setError('Failed to archive event')
     } finally {
-      setLoadingMore(false)
+      setBusyEvent(null)
     }
   }
 
-  if (loading) {
+  async function deleteEvent(event: Event) {
+    if (!window.confirm(`Delete "${event.title}"? This cannot be undone.`)) return
+    setBusyEvent({ id: event.id, action: 'delete' })
+    try {
+      const res = await fetch(`/api/${tenant.slug}/events/${event.id}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Failed to delete event')
+      if (events.length === 1 && page > 1) {
+        setPage((current) => Math.max(1, current - 1))
+      } else {
+        await fetchCurrentPage()
+      }
+    } catch {
+      setError('Failed to delete event')
+    } finally {
+      setBusyEvent(null)
+    }
+  }
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+  const pageStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1
+  const pageEnd = totalCount === 0 ? 0 : pageStart + events.length - 1
+
+  if (loading && events.length === 0) {
     return (
       <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
         Loading events…
@@ -134,26 +151,132 @@ export function EventTimeline({ filters, onRecentCount }: EventTimelineProps) {
     )
   }
 
-  if (events.length === 0) {
+  if (events.length === 0 && totalCount === 0) {
     return (
-      <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
-        No events yet. Send a webhook to get started.
+      <div className="flex flex-col gap-3">
+        <PaginationControls
+          page={page}
+          pageSize={pageSize}
+          totalPages={totalPages}
+          totalCount={totalCount}
+          pageStart={pageStart}
+          pageEnd={pageEnd}
+          onPageSize={(size) => {
+            setPageSize(size)
+            setPage(1)
+          }}
+          onPrevious={() => setPage((current) => Math.max(1, current - 1))}
+          onNext={() => setPage((current) => Math.min(totalPages, current + 1))}
+        />
+        <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
+          No events yet. Send a webhook to get started.
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
+      <PaginationControls
+        page={page}
+        pageSize={pageSize}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        pageStart={pageStart}
+        pageEnd={pageEnd}
+        onPageSize={(size) => {
+          setPageSize(size)
+          setPage(1)
+        }}
+        onPrevious={() => setPage((current) => Math.max(1, current - 1))}
+        onNext={() => setPage((current) => Math.min(totalPages, current + 1))}
+      />
       {events.map((event) => (
-        <EventCard key={event.id} event={event} slug={tenant.slug} />
+        <EventCard
+          key={event.id}
+          event={event}
+          slug={tenant.slug}
+          busyAction={busyEvent?.id === event.id ? busyEvent.action : null}
+          onArchive={archiveEvent}
+          onDelete={deleteEvent}
+        />
       ))}
-      {nextCursor && (
-        <div className="flex justify-center pt-2">
-          <Button variant="outline" size="sm" onClick={loadMore} disabled={loadingMore}>
-            {loadingMore ? 'Loading…' : 'Load more'}
-          </Button>
-        </div>
-      )}
+      <PaginationControls
+        page={page}
+        pageSize={pageSize}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        pageStart={pageStart}
+        pageEnd={pageEnd}
+        onPageSize={(size) => {
+          setPageSize(size)
+          setPage(1)
+        }}
+        onPrevious={() => setPage((current) => Math.max(1, current - 1))}
+        onNext={() => setPage((current) => Math.min(totalPages, current + 1))}
+      />
+    </div>
+  )
+}
+
+interface PaginationControlsProps {
+  page: number
+  pageSize: number
+  totalPages: number
+  totalCount: number
+  pageStart: number
+  pageEnd: number
+  onPageSize: (size: number) => void
+  onPrevious: () => void
+  onNext: () => void
+}
+
+function PaginationControls({
+  page,
+  pageSize,
+  totalPages,
+  totalCount,
+  pageStart,
+  pageEnd,
+  onPageSize,
+  onPrevious,
+  onNext,
+}: PaginationControlsProps) {
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        {totalCount > 0 ? (
+          <span>
+            Showing {pageStart}-{pageEnd} of {totalCount}
+          </span>
+        ) : (
+          <span>No events match these filters</span>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs">Rows</span>
+        <Select value={String(pageSize)} onValueChange={(value) => onPageSize(Number(value))}>
+          <SelectTrigger size="sm" className="w-20">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PAGE_SIZE_OPTIONS.map((option) => (
+              <SelectItem key={option} value={String(option)}>
+                {option}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button variant="outline" size="sm" onClick={onPrevious} disabled={page <= 1}>
+          Previous
+        </Button>
+        <span className="min-w-16 text-center text-xs">
+          {page} / {totalPages}
+        </span>
+        <Button variant="outline" size="sm" onClick={onNext} disabled={page >= totalPages}>
+          Next
+        </Button>
+      </div>
     </div>
   )
 }

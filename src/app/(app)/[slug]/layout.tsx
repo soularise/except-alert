@@ -25,7 +25,7 @@ export default async function TenantLayout({
     return (
       <div className="flex h-full">
         <AppSidebar slug={slug} authDisabled />
-        <main className="min-w-0 flex-1 overflow-y-auto">
+        <main className="min-w-0 flex-1 overflow-y-auto pt-14 md:pt-0">
           <TenantProvider tenant={tenant} role="owner" authDisabled>
             {children}
           </TenantProvider>
@@ -43,7 +43,7 @@ export default async function TenantLayout({
   return (
     <div className="flex h-full">
       <AppSidebar slug={slug} />
-      <main className="min-w-0 flex-1 overflow-y-auto">
+      <main className="min-w-0 flex-1 overflow-y-auto pt-14 md:pt-0">
         <TenantProvider
           tenant={membership.tenant}
           role={membership.role as 'owner' | 'admin' | 'member' | 'viewer'}

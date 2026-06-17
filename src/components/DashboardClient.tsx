@@ -13,6 +13,7 @@ interface DashboardClientProps {
 
 export function DashboardClient({ initialFilters, openCount, criticalCount }: DashboardClientProps) {
   const [recentCount, setRecentCount] = useState<number>(0)
+  const filtersKey = JSON.stringify(initialFilters)
 
   return (
     <div className="flex flex-col gap-6">
@@ -22,7 +23,7 @@ export function DashboardClient({ initialFilters, openCount, criticalCount }: Da
         recentCount={recentCount}
       />
       <FilterBar filters={initialFilters} />
-      <EventTimeline filters={initialFilters} onRecentCount={setRecentCount} />
+      <EventTimeline key={filtersKey} filters={initialFilters} onRecentCount={setRecentCount} />
     </div>
   )
 }

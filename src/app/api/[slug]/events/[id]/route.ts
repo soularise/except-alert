@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { and, asc, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { auditLog, events } from '@/lib/db/schema'
+import { actions, auditLog, events } from '@/lib/db/schema'
 import { requireTenantAccess } from '@/lib/auth-guard'
 
 const VALID_STATUSES = new Set(['open', 'acknowledged', 'resolved', 'dismissed'])
@@ -97,6 +97,32 @@ export async function PATCH(
         receivedAt: updated.receivedAt.toISOString(),
       },
     })
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ slug: string; id: string }> }
+) {
+  const { slug, id } = await params
+  const access = await requireTenantAccess(request, slug, 'member')
+  if (!access) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  try {
+    const [event] = await db
+      .select({ id: events.id })
+      .from(events)
+      .where(and(eq(events.id, id), eq(events.tenantId, access.tenant.id)))
+      .limit(1)
+
+    if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
+
+    await db.delete(actions).where(eq(actions.eventId, id))
+    await db.delete(events).where(and(eq(events.id, id), eq(events.tenantId, access.tenant.id)))
+
+    return NextResponse.json({ ok: true })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

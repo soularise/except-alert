@@ -54,7 +54,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   return (
     <div className="flex flex-col h-full">
       <PageHeader title="Events" />
-      <div className="px-6 py-6">
+      <div className="px-4 py-6 sm:px-6">
         <DashboardClient
           initialFilters={filters}
           openCount={openCount}

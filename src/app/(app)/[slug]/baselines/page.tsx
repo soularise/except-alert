@@ -190,15 +190,15 @@ export default function BaselinesPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader title="Baselines" />
-      <div className="px-6 py-6">
-        <div className="mb-6 flex items-start justify-between">
+      <div className="px-4 py-6 sm:px-6">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-lg font-semibold text-foreground">Baselines</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Alert when event counts exceed thresholds
             </p>
           </div>
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className="flex flex-wrap gap-2 sm:justify-end">
             <Button
               type="button"
               variant="outline"

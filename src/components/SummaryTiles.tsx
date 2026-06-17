@@ -6,7 +6,7 @@ interface SummaryTilesProps {
 
 export function SummaryTiles({ openCount, criticalCount, recentCount }: SummaryTilesProps) {
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
       <div className="rounded-xl border border-border/50 border-l-4 border-l-primary bg-card shadow-sm p-4">
         <p className="text-3xl font-bold text-foreground">{openCount}</p>
         <p className="text-sm text-muted-foreground mt-1">Open Events</p>

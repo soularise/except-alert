@@ -8,6 +8,10 @@ export type ProviderDef = {
   signatureHeader: string | null
   signatureAlgorithm: 'stripe' | 'hmac-sha256' | 'raw-sha256'
   signatureLabel: string
+  secretRequired?: boolean
+  secretLabel?: string
+  secretPlaceholder?: string
+  configHelp?: string
   docsUrl: string
   eventCategories: EventCategory[]
   hidden?: boolean
@@ -46,6 +50,26 @@ export const PROVIDERS: ProviderDef[] = [
     docsUrl: 'https://docs.github.com/webhooks',
     eventCategories: [
       { value: 'github.workflow_run', label: 'Workflow Run' },
+    ],
+  },
+  {
+    id: 'supabase',
+    name: 'Supabase',
+    icon: '⚡',
+    description: 'Database row insert, update, and delete webhooks',
+    signatureHeader: null,
+    signatureAlgorithm: 'hmac-sha256',
+    signatureLabel: 'Unsigned database webhook',
+    secretRequired: false,
+    secretLabel: 'Webhook Signing Secret (optional)',
+    secretPlaceholder: 'Leave blank for Supabase Database Webhooks',
+    configHelp:
+      'Supabase Database Webhooks send JSON payloads without a built-in HMAC signature header. Save without a secret unless you add a compatible signing layer.',
+    docsUrl: 'https://supabase.com/docs/guides/database/webhooks',
+    eventCategories: [
+      { value: 'supabase.insert', label: 'Row Inserted' },
+      { value: 'supabase.update', label: 'Row Updated' },
+      { value: 'supabase.delete', label: 'Row Deleted' },
     ],
   },
   {

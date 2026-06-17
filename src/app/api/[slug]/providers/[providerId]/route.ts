@@ -36,6 +36,10 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({
       ...providerDef,
+      secretRequired: providerDef.secretRequired ?? true,
+      secretLabel: providerDef.secretLabel ?? 'Webhook Signing Secret',
+      secretPlaceholder: providerDef.secretPlaceholder ?? 'e.g. whsec_...',
+      configHelp: providerDef.configHelp ?? null,
       configured: !!row,
       secretKey: row ? '••••••••••' : null,
       webhookUrl: `${relayUrl}/hook/${slug}/${providerId}`,
@@ -61,6 +65,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
   }
 
   const { secret_key } = body as { secret_key?: unknown }
+  const secretRequired = providerDef.secretRequired ?? true
 
   try {
     const [existing] = await db
@@ -74,7 +79,11 @@ export async function PUT(request: NextRequest, { params }: Params) {
       )
       .limit(1)
 
-    if (typeof secret_key !== 'string' || (!secret_key.trim() && !existing)) {
+    if (typeof secret_key !== 'string') {
+      return NextResponse.json({ error: 'secret_key must be a string' }, { status: 400 })
+    }
+
+    if (secretRequired && !secret_key.trim() && !existing) {
       return NextResponse.json({ error: 'secret_key is required' }, { status: 400 })
     }
 

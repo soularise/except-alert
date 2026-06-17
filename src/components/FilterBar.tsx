@@ -45,13 +45,13 @@ export function FilterBar({ filters }: FilterBarProps) {
   const hasFilters = !!(filters.source || filters.severity || filters.category || filters.status)
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border/50 bg-muted/40 px-3 py-2">
-      <div className="relative">
+    <div className="flex flex-col gap-2 rounded-lg border border-border/50 bg-muted/40 px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center">
+      <div className="relative w-full sm:w-auto">
         <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Source"
           value={filters.source ?? ''}
-          className={`w-36 pl-8 ${filters.source ? 'ring-1 ring-primary/40' : ''}`}
+          className={`w-full pl-8 sm:w-36 ${filters.source ? 'ring-1 ring-primary/40' : ''}`}
           onChange={(e) => updateParam('source', e.target.value)}
         />
       </div>
@@ -60,7 +60,7 @@ export function FilterBar({ filters }: FilterBarProps) {
         value={filters.severity ?? ''}
         onValueChange={(val) => updateParam('severity', !val || val === 'all' ? '' : val)}
       >
-        <SelectTrigger className={`w-36 ${filters.severity ? 'ring-1 ring-primary/40' : ''}`}>
+        <SelectTrigger className={`w-full sm:w-36 ${filters.severity ? 'ring-1 ring-primary/40' : ''}`}>
           <SelectValue placeholder="Severity" />
         </SelectTrigger>
         <SelectContent>
@@ -72,12 +72,12 @@ export function FilterBar({ filters }: FilterBarProps) {
         </SelectContent>
       </Select>
 
-      <div className="relative">
+      <div className="relative w-full sm:w-auto">
         <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Category"
           value={filters.category ?? ''}
-          className={`w-36 pl-8 ${filters.category ? 'ring-1 ring-primary/40' : ''}`}
+          className={`w-full pl-8 sm:w-36 ${filters.category ? 'ring-1 ring-primary/40' : ''}`}
           onChange={(e) => updateParam('category', e.target.value)}
         />
       </div>
@@ -86,7 +86,7 @@ export function FilterBar({ filters }: FilterBarProps) {
         value={filters.status ?? ''}
         onValueChange={(val) => updateParam('status', !val || val === 'all' ? '' : val)}
       >
-        <SelectTrigger className={`w-40 ${filters.status ? 'ring-1 ring-primary/40' : ''}`}>
+        <SelectTrigger className={`w-full sm:w-40 ${filters.status ? 'ring-1 ring-primary/40' : ''}`}>
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
@@ -99,9 +99,9 @@ export function FilterBar({ filters }: FilterBarProps) {
       </Select>
 
       {hasFilters && (
-        <div className="ml-auto flex items-center gap-2">
-          <Separator orientation="vertical" className="mx-1 h-5" />
-          <Button variant="ghost" size="sm" onClick={clearFilters}>
+        <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
+          <Separator orientation="vertical" className="mx-1 hidden h-5 sm:block" />
+          <Button className="w-full sm:w-auto" variant="ghost" size="sm" onClick={clearFilters}>
             Clear filters
           </Button>
         </div>

@@ -16,8 +16,12 @@ export default async function AdminProvisionPage() {
 
   const firstTenant = await getFirstTenantForUser(session.user.id)
 
-  const content = (
-    <main className="min-w-0 flex-1 overflow-y-auto bg-background px-4 py-8 text-foreground sm:px-6 lg:px-8">
+  const content = (hasSidebar: boolean) => (
+    <main
+      className={`min-w-0 flex-1 overflow-y-auto bg-background px-4 py-8 text-foreground sm:px-6 lg:px-8 ${
+        hasSidebar ? 'pt-22 md:pt-8' : ''
+      }`}
+    >
       <div className="mx-auto w-full max-w-3xl space-y-6">
         <div>
           <p className="text-sm font-medium text-primary">Admin</p>
@@ -32,13 +36,13 @@ export default async function AdminProvisionPage() {
   )
 
   if (!firstTenant) {
-    return <div className="flex h-full">{content}</div>
+    return <div className="flex h-full">{content(false)}</div>
   }
 
   return (
     <div className="flex h-full">
       <AppSidebar slug={firstTenant.slug} />
-      {content}
+      {content(true)}
     </div>
   )
 }

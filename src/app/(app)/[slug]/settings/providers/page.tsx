@@ -16,6 +16,10 @@ type ProviderItem = {
   signatureHeader: string | null
   signatureAlgorithm: string
   signatureLabel: string
+  secretRequired: boolean
+  secretLabel: string
+  secretPlaceholder: string
+  configHelp: string | null
   docsUrl: string
   configured: boolean
   webhookUrl: string
@@ -228,15 +232,22 @@ export default function ProvidersPage() {
               <div className="border-t px-4 pb-4 pt-4 space-y-4 bg-muted/30">
                 <form onSubmit={(e) => handleSave(e, provider.id)} className="space-y-4">
                   <div className="space-y-1.5">
-                    <Label htmlFor={`secret-${provider.id}`}>Webhook Signing Secret</Label>
+                    <Label htmlFor={`secret-${provider.id}`}>{provider.secretLabel}</Label>
                     <Input
                       id={`secret-${provider.id}`}
                       type="password"
                       autoComplete="new-password"
-                      placeholder={provider.configured ? '••••••••••  (leave blank to keep current)' : 'e.g. whsec_...'}
+                      placeholder={
+                        provider.configured
+                          ? '••••••••••  (leave blank to keep current)'
+                          : provider.secretPlaceholder
+                      }
                       value={secretDraft}
                       onChange={(e) => setSecretDraft(e.target.value)}
                     />
+                    {provider.configHelp && (
+                      <p className="text-xs text-muted-foreground">{provider.configHelp}</p>
+                    )}
                   </div>
 
                   <div className="space-y-1.5">
@@ -284,7 +295,10 @@ export default function ProvidersPage() {
                     <Button
                       type="submit"
                       size="sm"
-                      disabled={saving || (!secretDraft.trim() && !provider.configured)}
+                      disabled={
+                        saving ||
+                        (provider.secretRequired && !secretDraft.trim() && !provider.configured)
+                      }
                     >
                       {saving ? 'Saving...' : 'Save Configuration'}
                     </Button>

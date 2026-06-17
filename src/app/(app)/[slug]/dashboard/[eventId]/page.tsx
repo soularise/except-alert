@@ -29,7 +29,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
         title={title}
         breadcrumb={{ label: 'Events', href: `/${slug}/dashboard` }}
       />
-      <div className="px-6 py-6">
+      <div className="px-4 py-6 sm:px-6">
         <EventDetail eventId={eventId} />
       </div>
     </div>

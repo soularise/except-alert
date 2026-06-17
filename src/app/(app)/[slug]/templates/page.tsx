@@ -219,8 +219,8 @@ export default function TemplatesPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader title="Templates" />
-      <div className="px-6 py-6">
-        <div className="mb-6 flex items-start justify-between">
+      <div className="px-4 py-6 sm:px-6">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-xl font-semibold">Action Templates</h1>
             <p className="mt-1 text-sm text-muted-foreground">
