@@ -38,3 +38,20 @@ test('supabase is available as an optional-secret provider', () => {
   assert.match(page, /webhookUrl: string \| null/)
   assert.match(page, /webhookUrlError: string \| null/)
 })
+
+test('stripe is available for subscription and payment webhooks', () => {
+  const providers = read('src/lib/providers.ts')
+  const stripeBlock = providers.slice(
+    providers.indexOf("id: 'stripe'"),
+    providers.indexOf("id: 'github'")
+  )
+
+  assert.notEqual(stripeBlock, '')
+  assert.doesNotMatch(stripeBlock, /hidden: true/)
+  assert.match(stripeBlock, /signatureAlgorithm: 'stripe'/)
+  assert.match(stripeBlock, /Stripe-Signature/)
+  assert.match(stripeBlock, /stripe\.checkout\.session\.completed/)
+  assert.match(stripeBlock, /stripe\.customer\.subscription\.created/)
+  assert.match(stripeBlock, /stripe\.invoice\.paid/)
+  assert.match(stripeBlock, /stripe\.payment_intent\.succeeded/)
+})

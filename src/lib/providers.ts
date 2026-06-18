@@ -20,15 +20,17 @@ export type ProviderDef = {
 export const PROVIDERS: ProviderDef[] = [
   {
     id: 'stripe',
-    hidden: true,
     name: 'Stripe',
-    icon: '🔒',
-    description: 'Payment events, charge failures, disputes',
+    icon: '💳',
+    description: 'Subscription, checkout, payment, charge, and dispute events',
     signatureHeader: 'Stripe-Signature',
     signatureAlgorithm: 'stripe',
     signatureLabel: 'Stripe signed payload',
     docsUrl: 'https://stripe.com/docs/webhooks',
     eventCategories: [
+      { value: 'stripe.checkout.session.completed', label: 'Checkout Completed' },
+      { value: 'stripe.customer.subscription.created', label: 'Subscription Created' },
+      { value: 'stripe.invoice.paid', label: 'Invoice Paid' },
       { value: 'stripe.charge.failed', label: 'Charge Failed' },
       { value: 'stripe.charge.refunded', label: 'Charge Refunded' },
       { value: 'stripe.charge.dispute.created', label: 'Dispute Created' },
