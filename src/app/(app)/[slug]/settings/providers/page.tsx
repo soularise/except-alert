@@ -22,7 +22,8 @@ type ProviderItem = {
   configHelp: string | null
   docsUrl: string
   configured: boolean
-  webhookUrl: string
+  webhookUrl: string | null
+  webhookUrlError: string | null
 }
 
 export default function ProvidersPage() {
@@ -180,15 +181,21 @@ export default function ProvidersPage() {
                   <p className="text-xs text-muted-foreground mt-0.5">{provider.description}</p>
                   {provider.configured && !isConfiguring && (
                     <div className="flex items-center gap-2 mt-2">
-                      <code className="max-w-xl truncate text-xs text-muted-foreground">
-                        {provider.webhookUrl}
-                      </code>
-                      <button
-                        onClick={() => handleCopy(provider.webhookUrl, provider.id)}
-                        className="text-xs text-primary hover:underline shrink-0"
-                      >
-                        {isCopied ? 'Copied!' : 'Copy'}
-                      </button>
+                      {provider.webhookUrl ? (
+                        <>
+                          <code className="max-w-xl truncate text-xs text-muted-foreground">
+                            {provider.webhookUrl}
+                          </code>
+                          <button
+                            onClick={() => handleCopy(provider.webhookUrl!, provider.id)}
+                            className="text-xs text-primary hover:underline shrink-0"
+                          >
+                            {isCopied ? 'Copied!' : 'Copy'}
+                          </button>
+                        </>
+                      ) : (
+                        <p className="text-xs text-destructive">{provider.webhookUrlError}</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -252,22 +259,30 @@ export default function ProvidersPage() {
 
                   <div className="space-y-1.5">
                     <Label>Your Webhook URL</Label>
-                    <div className="flex items-center gap-2">
-                      <code className="min-w-0 flex-1 break-all rounded-md border bg-background px-3 py-2 text-xs text-muted-foreground">
-                        {provider.webhookUrl}
-                      </code>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCopy(provider.webhookUrl, `${provider.id}-panel`)}
-                      >
-                        {isCopiedPanel ? 'Copied!' : 'Copy'}
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Configure this URL in {provider.name}&apos;s webhook settings.
-                    </p>
+                    {provider.webhookUrl ? (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <code className="min-w-0 flex-1 break-all rounded-md border bg-background px-3 py-2 text-xs text-muted-foreground">
+                            {provider.webhookUrl}
+                          </code>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleCopy(provider.webhookUrl!, `${provider.id}-panel`)}
+                          >
+                            {isCopiedPanel ? 'Copied!' : 'Copy'}
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Configure this URL in {provider.name}&apos;s webhook settings.
+                        </p>
+                      </>
+                    ) : (
+                      <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                        {provider.webhookUrlError}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">

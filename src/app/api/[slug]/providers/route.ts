@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { tenantProviders } from '@/lib/db/schema'
 import { requireTenantAccess } from '@/lib/auth-guard'
 import { PROVIDERS } from '@/lib/providers'
+import { resolveRelayUrl } from '@/lib/relay-url'
 
 export async function GET(
   request: NextRequest,
@@ -13,12 +14,7 @@ export async function GET(
   const access = await requireTenantAccess(request, slug, 'viewer')
   if (!access) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const relayUrl = process.env.RELAY_URL ?? (() => {
-    const proto = request.headers.get('x-forwarded-proto') ?? 'http'
-    const hostHeader = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? 'localhost'
-    const hostname = hostHeader.split(':')[0]
-    return `${proto}://${hostname}:3800`
-  })()
+  const relayUrl = resolveRelayUrl(request)
 
   try {
     const rows = await db
@@ -43,7 +39,8 @@ export async function GET(
       docsUrl: p.docsUrl,
       eventCategories: p.eventCategories,
       configured: configuredIds.has(p.id),
-      webhookUrl: `${relayUrl}/hook/${slug}/${p.id}`,
+      webhookUrl: relayUrl.url ? `${relayUrl.url}/hook/${slug}/${p.id}` : null,
+      webhookUrlError: relayUrl.error,
     }))
 
     return NextResponse.json({ providers })

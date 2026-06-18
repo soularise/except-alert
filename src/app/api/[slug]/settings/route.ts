@@ -4,8 +4,18 @@ import { db } from '@/lib/db'
 import { settings } from '@/lib/db/schema'
 import { requireTenantAccess } from '@/lib/auth-guard'
 
-const NOTIFICATION_KEYS = ['slack_webhook_url', 'telegram_bot_token', 'telegram_chat_id'] as const
+const NOTIFICATION_KEYS = [
+  'slack_webhook_url',
+  'slack_notify_on_event',
+  'telegram_bot_token',
+  'telegram_chat_id',
+  'telegram_notify_on_event',
+] as const
 type NotificationKey = (typeof NOTIFICATION_KEYS)[number]
+
+function settingEnabled(value: unknown): boolean {
+  return value === 'true'
+}
 
 export async function GET(
   request: NextRequest,
@@ -28,8 +38,10 @@ export async function GET(
     const values = Object.fromEntries(rows.map((r) => [r.key, r.value]))
     return NextResponse.json({
       slack_webhook_url: values['slack_webhook_url'] ?? null,
+      slack_notify_on_event: settingEnabled(values['slack_notify_on_event']),
       telegram_bot_token: values['telegram_bot_token'] ?? null,
       telegram_chat_id: values['telegram_chat_id'] ?? null,
+      telegram_notify_on_event: settingEnabled(values['telegram_notify_on_event']),
     })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -54,7 +66,9 @@ export async function PATCH(
   const updates: { key: NotificationKey; value: string }[] = []
   for (const key of NOTIFICATION_KEYS) {
     const val = (body as Record<string, unknown>)[key]
-    if (typeof val === 'string') {
+    if (typeof val === 'boolean') {
+      updates.push({ key, value: val ? 'true' : 'false' })
+    } else if (typeof val === 'string') {
       updates.push({ key, value: val.trim() })
     }
   }

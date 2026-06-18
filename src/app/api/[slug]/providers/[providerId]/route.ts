@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { tenantProviders } from '@/lib/db/schema'
 import { requireTenantAccess } from '@/lib/auth-guard'
 import { PROVIDERS } from '@/lib/providers'
+import { resolveRelayUrl } from '@/lib/relay-url'
 
 type Params = { params: Promise<{ slug: string; providerId: string }> }
 
@@ -15,12 +16,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   const providerDef = PROVIDERS.find((p) => p.id === providerId && !p.hidden)
   if (!providerDef) return NextResponse.json({ error: 'Provider not found' }, { status: 404 })
 
-  const relayUrl = process.env.RELAY_URL ?? (() => {
-    const proto = request.headers.get('x-forwarded-proto') ?? 'http'
-    const hostHeader = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? 'localhost'
-    const hostname = hostHeader.split(':')[0]
-    return `${proto}://${hostname}:3800`
-  })()
+  const relayUrl = resolveRelayUrl(request)
 
   try {
     const [row] = await db
@@ -42,7 +38,8 @@ export async function GET(request: NextRequest, { params }: Params) {
       configHelp: providerDef.configHelp ?? null,
       configured: !!row,
       secretKey: row ? '••••••••••' : null,
-      webhookUrl: `${relayUrl}/hook/${slug}/${providerId}`,
+      webhookUrl: relayUrl.url ? `${relayUrl.url}/hook/${slug}/${providerId}` : null,
+      webhookUrlError: relayUrl.error,
     })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

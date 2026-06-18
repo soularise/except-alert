@@ -12,8 +12,10 @@ import { Separator } from '@/components/ui/separator'
 export default function SettingsPage() {
   const { tenant, role, authDisabled } = useTenant()
   const [slackUrl, setSlackUrl] = useState('')
+  const [slackNotifyOnEvent, setSlackNotifyOnEvent] = useState(false)
   const [telegramToken, setTelegramToken] = useState('')
   const [telegramChatId, setTelegramChatId] = useState('')
+  const [telegramNotifyOnEvent, setTelegramNotifyOnEvent] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testingSlack, setTestingSlack] = useState(false)
@@ -29,8 +31,10 @@ export default function SettingsPage() {
       .then((r) => r.json())
       .then((data) => {
         setSlackUrl(data.slack_webhook_url ?? '')
+        setSlackNotifyOnEvent(Boolean(data.slack_notify_on_event))
         setTelegramToken(data.telegram_bot_token ?? '')
         setTelegramChatId(data.telegram_chat_id ?? '')
+        setTelegramNotifyOnEvent(Boolean(data.telegram_notify_on_event))
       })
       .finally(() => setLoading(false))
   }, [tenant.slug])
@@ -47,8 +51,10 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           slack_webhook_url: slackUrl,
+          slack_notify_on_event: slackNotifyOnEvent,
           telegram_bot_token: telegramToken,
           telegram_chat_id: telegramChatId,
+          telegram_notify_on_event: telegramNotifyOnEvent,
         }),
       })
       setSaveMessage(res.ok ? 'Saved.' : 'Failed to save.')
@@ -111,7 +117,7 @@ export default function SettingsPage() {
         <div>
           <h3 className="text-sm font-medium text-foreground">Notifications</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Configure notification channels for baseline alerts.
+            Configure notification channels for baseline alerts and per-event alerts.
           </p>
         </div>
 
@@ -127,6 +133,18 @@ export default function SettingsPage() {
               onChange={(e) => setSlackUrl(e.target.value)}
               disabled={!canManageSettings}
             />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-border bg-background"
+                checked={slackNotifyOnEvent}
+                onChange={(e) => setSlackNotifyOnEvent(e.target.checked)}
+                disabled={!canManageSettings}
+              />
+              Notify Slack for every new event
+            </label>
           </div>
           <div className="flex items-center gap-3">
             <Button
@@ -181,6 +199,18 @@ export default function SettingsPage() {
               onChange={(e) => setTelegramChatId(e.target.value)}
               disabled={!canManageSettings}
             />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-border bg-background"
+                checked={telegramNotifyOnEvent}
+                onChange={(e) => setTelegramNotifyOnEvent(e.target.checked)}
+                disabled={!canManageSettings}
+              />
+              Notify Telegram for every new event
+            </label>
           </div>
           <div className="flex items-center gap-3">
             <Button

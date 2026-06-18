@@ -1,12 +1,13 @@
 # ExceptAlert
 
-A webhook event monitor and human-in-the-loop (HITL) action runner. ExceptAlert sits downstream of [Relay](https://github.com/soularise/relay), a Rust/Axum service that normalises incoming webhooks into a standard schema and writes them to a shared Postgres database. ExceptAlert provides the dashboard UI, event filtering, status management, action templates, idempotent action execution, and threshold-based alerting.
+A webhook event monitor and human-in-the-loop (HITL) action runner. ExceptAlert sits downstream of [Relay](https://github.com/soularise/relay), a Rust/Axum service that normalises incoming webhooks into a standard schema and writes them to a shared Postgres database. ExceptAlert provides the dashboard UI, event filtering, status management, action templates, idempotent action execution, threshold-based alerting, and optional per-event notifications.
 
 ## Features
 
 - **Multi-tenant dashboard** — filter, search, and inspect webhook events by source, severity, category, and status
 - **HITL action templates** — define outbound HTTP actions with variable interpolation, executed idempotently per event
 - **Baselines and alerting** — set per-category event rate thresholds; receive Slack or Telegram alerts when thresholds are exceeded, with per-window cooldowns
+- **Immediate notifications** — optionally notify Slack or Telegram for every new event Relay accepts
 - **Team management** — invite teammates, manage roles (owner / member) per tenant
 - **Settings** — configure notification providers, password reset flows, and tenant details
 
@@ -77,7 +78,7 @@ DATABASE_URL=postgres://relay:relay@localhost:5432/relay npm run dev
 | `BETTER_AUTH_URL` | Yes | Public URL of the app (e.g. `https://app.example.com`) |
 | `EXCEPTALERT_ADMIN_EMAILS` | Yes | Comma-separated list of admin email addresses |
 | `EXCEPTALERT_APP_URL` | Yes | Public URL used in outbound emails and links |
-| `RELAY_URL` | No | URL of the Relay service (default: `http://relay:3800`) |
+| `RELAY_URL` | Required in production | Public URL of the Relay service. Local Docker Compose defaults to `http://relay:3800`; hosted webhooks should use the public HTTPS Relay origin. |
 | `EXCEPTALERT_PASSWORD_RESET_EVENT_TENANT_ID` | No | Tenant ID used for password reset event routing |
 | `EXCEPTALERT_PASSWORD_RESET_EVENT_TENANT_SLUG` | No | Tenant slug used for password reset event routing |
 
@@ -108,7 +109,7 @@ Baselines monitor event rates per category and alert when a threshold is exceede
 - **Threshold** — the maximum number of matching events allowed within the window before an alert fires
 - **Window** — lookback period: 15 min, 30 min, 60 min, 6 hours, or 24 hours
 
-A threshold of `1` with a 15-minute window alerts on the second matching event within 15 minutes. After an alert fires, the baseline cools down for the duration of its window before it can alert again. Configure Slack or Telegram notification channels from Settings → Providers.
+A threshold of `1` with a 15-minute window alerts on the second matching event within 15 minutes. After an alert fires, the baseline cools down for the duration of its window before it can alert again. Configure Slack or Telegram notification channels from Settings → Notifications. That screen also includes per-channel toggles to notify immediately for every new event Relay accepts.
 
 ## HITL Action Templates
 
