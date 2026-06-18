@@ -45,12 +45,12 @@ export default function ProvidersPage() {
   const loadProviders = useCallback(async () => {
     try {
       const res = await fetch(`/api/${tenant.slug}/providers`)
-      if (!res.ok) throw new Error('Failed to load providers')
+      if (!res.ok) throw new Error('Failed to load sources')
       const data = await res.json() as { providers: ProviderItem[] }
       setProviders(data.providers)
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load providers')
+      setError(err instanceof Error ? err.message : 'Failed to load sources')
     } finally {
       setLoading(false)
     }
@@ -139,7 +139,7 @@ export default function ProvidersPage() {
   }
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading providers...</p>
+    return <p className="text-sm text-muted-foreground">Loading sources...</p>
   }
 
   if (error) {
@@ -149,8 +149,9 @@ export default function ProvidersPage() {
   return (
     <div className="w-full max-w-5xl space-y-3" style={{ width: '960px', maxWidth: '100%' }}>
       <div className="mb-4">
+        <h2 className="text-sm font-semibold text-foreground">Sources</h2>
         <p className="text-sm text-muted-foreground">
-          Connect your webhook sources to ExceptAlert. Configure a provider to start receiving events.
+          Connect webhook sources to ExceptAlert and copy their ingest URLs.
         </p>
       </div>
 

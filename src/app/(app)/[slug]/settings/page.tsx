@@ -5,12 +5,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useTenant } from '@/components/TenantProvider'
-import { AccountSettings } from '@/components/AccountSettings'
 import { TelegramSetupGuide } from '@/components/TelegramSetupGuide'
 import { Separator } from '@/components/ui/separator'
 
 export default function SettingsPage() {
-  const { tenant, role, authDisabled } = useTenant()
+  const { tenant, role } = useTenant()
   const [slackUrl, setSlackUrl] = useState('')
   const [slackNotifyOnEvent, setSlackNotifyOnEvent] = useState(false)
   const [telegramToken, setTelegramToken] = useState('')
@@ -252,7 +251,6 @@ export default function SettingsPage() {
           setTelegramChatId(chatId)
         }}
       />
-      <AccountSettings authDisabled={authDisabled} />
     </div>
   )
 }

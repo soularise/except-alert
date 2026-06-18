@@ -38,7 +38,7 @@ export async function POST(
         source: providerId,
         severity: 'info',
         title: `Test event — ${providerDef.name}`,
-        description: 'Sent from Provider Settings → Test Connection',
+        description: 'Sent from Settings → Sources → Test Connection',
         category: 'test',
         tags: { test: true },
         payload: {},

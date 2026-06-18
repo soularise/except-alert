@@ -37,8 +37,8 @@ export function AppSidebar({ slug, authDisabled = false }: AppSidebarProps) {
 
   const navItems = [
     { label: 'Events',    href: `${base}/dashboard`,  icon: LayoutDashboard },
-    { label: 'Templates', href: `${base}/templates`,  icon: FileCode2 },
-    { label: 'Baselines', href: `${base}/baselines`,  icon: BarChart2 },
+    { label: 'Actions',   href: `${base}/templates`,  icon: FileCode2 },
+    { label: 'Alert Rules', href: `${base}/baselines`,  icon: BarChart2 },
     { label: 'Settings',  href: `${base}/settings`,   icon: Settings },
   ]
 

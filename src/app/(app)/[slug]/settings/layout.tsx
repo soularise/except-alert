@@ -11,9 +11,10 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const base = `/${tenant.slug}/settings`
 
   const tabs = [
-    { label: 'General',   href: base },
-    { label: 'Providers', href: `${base}/providers` },
-    { label: 'Team',      href: `${base}/team` },
+    { label: 'Notifications', href: base },
+    { label: 'Sources',       href: `${base}/providers` },
+    { label: 'Team',          href: `${base}/team` },
+    { label: 'Account',       href: `${base}/account` },
   ]
 
   return (

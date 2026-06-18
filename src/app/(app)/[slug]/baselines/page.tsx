@@ -189,13 +189,13 @@ export default function BaselinesPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <PageHeader title="Baselines" />
+      <PageHeader title="Alert Rules" />
       <div className="px-4 py-6 sm:px-6">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-lg font-semibold text-foreground">Baselines</h1>
+            <h1 className="text-lg font-semibold text-foreground">Alert Rules</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Alert when event counts exceed thresholds
+              Alert when event counts exceed thresholds.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 sm:justify-end">
@@ -207,14 +207,14 @@ export default function BaselinesPage() {
               <Info className="size-4" />
               How alerts work
             </Button>
-            <Button onClick={openAddDialog}>Add Baseline</Button>
+            <Button onClick={openAddDialog}>Add Rule</Button>
           </div>
         </div>
 
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading...</p>
         ) : baselineList.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No baselines yet.</p>
+          <p className="text-sm text-muted-foreground">No alert rules yet.</p>
         ) : (
           <Table>
             <TableHeader>
@@ -265,7 +265,7 @@ export default function BaselinesPage() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>
-                {editingBaseline ? 'Edit Baseline' : 'Add Baseline'}
+                {editingBaseline ? 'Edit Rule' : 'Add Rule'}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -294,7 +294,7 @@ export default function BaselinesPage() {
                   </Select>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    No providers configured yet. Set up a provider first.
+                    No sources configured yet. Set up a source first.
                   </p>
                 )}
               </div>
@@ -338,7 +338,7 @@ export default function BaselinesPage() {
                     ? 'Saving...'
                     : editingBaseline
                       ? 'Save Changes'
-                      : 'Create Baseline'}
+                      : 'Create Rule'}
                 </Button>
               </DialogFooter>
             </form>

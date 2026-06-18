@@ -218,22 +218,22 @@ export default function TemplatesPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <PageHeader title="Templates" />
+      <PageHeader title="Actions" />
       <div className="px-4 py-6 sm:px-6">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-xl font-semibold">Action Templates</h1>
+            <h1 className="text-xl font-semibold">Actions</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Configure webhook actions triggered from event detail
+              Configure response actions that can be triggered from event detail.
             </p>
           </div>
-          <Button onClick={openAddDialog}>Add Template</Button>
+          <Button onClick={openAddDialog}>Add Action</Button>
         </div>
 
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading...</p>
         ) : templates.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No templates yet.</p>
+          <p className="text-sm text-muted-foreground">No actions yet.</p>
         ) : (
           <Table>
             <TableHeader>
@@ -290,7 +290,7 @@ export default function TemplatesPage() {
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>
-                {editingTemplate ? 'Edit Template' : 'Add Template'}
+                {editingTemplate ? 'Edit Action' : 'Add Action'}
               </DialogTitle>
             </DialogHeader>
 
@@ -327,7 +327,7 @@ export default function TemplatesPage() {
                         </Select>
                       ) : (
                         <p className="text-sm text-muted-foreground">
-                          No providers configured yet. Set up a provider first.
+                          No sources configured yet. Set up a source first.
                         </p>
                       )}
                       {fieldState.error && (
@@ -454,7 +454,7 @@ export default function TemplatesPage() {
                       ? 'Saving...'
                       : editingTemplate
                         ? 'Save Changes'
-                        : 'Create Template'}
+                        : 'Create Action'}
                   </Button>
                 </DialogFooter>
               </form>

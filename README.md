@@ -6,7 +6,7 @@ A webhook event monitor and human-in-the-loop (HITL) action runner. ExceptAlert 
 
 - **Multi-tenant dashboard** — filter, search, and inspect webhook events by source, severity, category, and status
 - **HITL action templates** — define outbound HTTP actions with variable interpolation, executed idempotently per event
-- **Baselines and alerting** — set per-category event rate thresholds; receive Slack or Telegram alerts when thresholds are exceeded, with per-window cooldowns
+- **Alert rules** — set per-category event rate thresholds; receive Slack or Telegram alerts when thresholds are exceeded, with per-window cooldowns
 - **Immediate notifications** — optionally notify Slack or Telegram for every new event Relay accepts
 - **Team management** — invite teammates, manage roles (owner / member) per tenant
 - **Settings** — configure notification providers, password reset flows, and tenant details
@@ -101,9 +101,9 @@ DATABASE_URL=postgres://relay:relay@localhost:5432/relay npx drizzle-kit migrate
 
 The provisioning page at `/admin/provision` is accessible to emails listed in `EXCEPTALERT_ADMIN_EMAILS`. It creates a new tenant, owner user, and credential login, and displays a one-time temporary password. The user should change it from Settings → Account after first sign-in.
 
-## Baselines
+## Alert Rules
 
-Baselines monitor event rates per category and alert when a threshold is exceeded.
+Alert rules monitor event rates per category and notify when a threshold is exceeded.
 
 - **Category** — the event category to watch, e.g. `github.workflow_run`
 - **Threshold** — the maximum number of matching events allowed within the window before an alert fires
@@ -111,9 +111,9 @@ Baselines monitor event rates per category and alert when a threshold is exceede
 
 A threshold of `1` with a 15-minute window alerts on the second matching event within 15 minutes. After an alert fires, the baseline cools down for the duration of its window before it can alert again. Configure Slack or Telegram notification channels from Settings → Notifications. That screen also includes per-channel toggles to notify immediately for every new event Relay accepts.
 
-## HITL Action Templates
+## Actions
 
-Templates define outbound HTTP calls that can be triggered manually from an event's detail page. The URL, headers, and body support `{{variable}}` interpolation using event fields:
+Actions define outbound HTTP calls that can be triggered manually from an event's detail page. The URL, headers, and body support `{{variable}}` interpolation using event fields:
 
 | Variable | Description |
 |---|---|
