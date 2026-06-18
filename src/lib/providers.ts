@@ -153,4 +153,20 @@ export const PROVIDERS: ProviderDef[] = [
       { value: 'deployment.promoted', label: 'Deployment Promoted' },
     ],
   },
+  {
+    id: 'contact',
+    name: 'Contact Form',
+    icon: '✉️',
+    description: 'Landing page contact form inquiries',
+    signatureHeader: null,
+    signatureAlgorithm: 'hmac-sha256',
+    signatureLabel: 'Unsigned public form',
+    secretRequired: false,
+    secretLabel: 'No secret needed (public form)',
+    secretPlaceholder: '',
+    docsUrl: '',
+    eventCategories: [
+      { value: 'contact.inquiry', label: 'Inquiry' },
+    ],
+  },
 ]
