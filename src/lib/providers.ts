@@ -155,6 +155,7 @@ export const PROVIDERS: ProviderDef[] = [
   },
   {
     id: 'contact',
+    hidden: true,
     name: 'Contact Form',
     icon: '✉️',
     description: 'Landing page contact form inquiries',

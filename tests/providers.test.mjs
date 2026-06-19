@@ -55,3 +55,16 @@ test('stripe is available for subscription and payment webhooks', () => {
   assert.match(stripeBlock, /stripe\.invoice\.paid/)
   assert.match(stripeBlock, /stripe\.payment_intent\.succeeded/)
 })
+
+test('contact form provider is not public', () => {
+  const providers = read('src/lib/providers.ts')
+  const listRoute = read('src/app/api/[slug]/providers/route.ts')
+  const contactBlock = providers.slice(
+    providers.indexOf("id: 'contact'"),
+    providers.length
+  )
+
+  assert.notEqual(contactBlock, '')
+  assert.match(contactBlock, /hidden: true/)
+  assert.match(listRoute, /PROVIDERS\.filter\(\(p\) => !p\.hidden\)/)
+})
