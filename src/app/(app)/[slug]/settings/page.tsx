@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { useTenant } from '@/components/TenantProvider'
 import { TelegramSetupGuide } from '@/components/TelegramSetupGuide'
 import { Separator } from '@/components/ui/separator'
+import { canUseChannel } from '@/lib/plan-limits'
 
 export default function SettingsPage() {
   const { tenant, role } = useTenant()
@@ -24,6 +25,7 @@ export default function SettingsPage() {
   const [slackTestMessage, setSlackTestMessage] = useState<{ ok: boolean; text: string } | null>(null)
   const [telegramTestMessage, setTelegramTestMessage] = useState<{ ok: boolean; text: string } | null>(null)
   const canManageSettings = role === 'owner' || role === 'admin'
+  const canUseSlack = canUseChannel(tenant.plan, 'slack')
 
   useEffect(() => {
     fetch(`/api/${tenant.slug}/settings`)
@@ -50,7 +52,7 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           slack_webhook_url: slackUrl,
-          slack_notify_on_event: slackNotifyOnEvent,
+          slack_notify_on_event: canUseSlack ? slackNotifyOnEvent : false,
           telegram_bot_token: telegramToken,
           telegram_chat_id: telegramChatId,
           telegram_notify_on_event: telegramNotifyOnEvent,
@@ -122,6 +124,11 @@ export default function SettingsPage() {
 
         <div className="space-y-4">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Slack</h4>
+          {!canUseSlack && (
+            <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              Slack delivery requires Pro or Growth. Dashboard and Telegram remain available on Free.
+            </p>
+          )}
           <div className="space-y-2">
             <Label htmlFor="slack-url">Webhook URL</Label>
             <Input
@@ -130,7 +137,7 @@ export default function SettingsPage() {
               placeholder="https://hooks.slack.com/services/..."
               value={slackUrl}
               onChange={(e) => setSlackUrl(e.target.value)}
-              disabled={!canManageSettings}
+              disabled={!canManageSettings || !canUseSlack}
             />
           </div>
           <div className="flex items-center gap-3">
@@ -138,9 +145,9 @@ export default function SettingsPage() {
               <input
                 type="checkbox"
                 className="h-4 w-4 rounded border-border bg-background"
-                checked={slackNotifyOnEvent}
+                checked={canUseSlack && slackNotifyOnEvent}
                 onChange={(e) => setSlackNotifyOnEvent(e.target.checked)}
-                disabled={!canManageSettings}
+                disabled={!canManageSettings || !canUseSlack}
               />
               Notify Slack for every new event
             </label>
@@ -150,7 +157,7 @@ export default function SettingsPage() {
               type="button"
               variant="outline"
               size="sm"
-              disabled={testingSlack || !slackUrl.trim() || !canManageSettings}
+              disabled={testingSlack || !slackUrl.trim() || !canManageSettings || !canUseSlack}
               onClick={handleTestSlack}
             >
               {testingSlack ? 'Sending...' : 'Send Test'}

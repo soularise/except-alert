@@ -3,6 +3,7 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { settings } from '@/lib/db/schema'
 import { requireTenantAccess } from '@/lib/auth-guard'
+import { canUseChannel } from '@/lib/plan-limits'
 
 const NOTIFICATION_KEYS = [
   'slack_webhook_url',
@@ -66,6 +67,10 @@ export async function PATCH(
   const updates: { key: NotificationKey; value: string }[] = []
   for (const key of NOTIFICATION_KEYS) {
     const val = (body as Record<string, unknown>)[key]
+    if (key.startsWith('slack_') && !canUseChannel(access.tenant.plan, 'slack')) {
+      if (key === 'slack_notify_on_event') updates.push({ key, value: 'false' })
+      continue
+    }
     if (typeof val === 'boolean') {
       updates.push({ key, value: val ? 'true' : 'false' })
     } else if (typeof val === 'string') {

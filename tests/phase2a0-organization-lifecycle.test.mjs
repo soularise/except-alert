@@ -69,16 +69,19 @@ test('authenticated layout exposes an organization switcher', () => {
   assert.match(sidebar, /router\.push\(`\/\$\{nextSlug\}\/dashboard`\)/)
 })
 
-test('setup and disabled signup preserve invite-safe bootstrap behavior', () => {
+test('setup and public signup preserve invite-safe bootstrap behavior', () => {
   const setup = read('src/app/setup/page.tsx')
   const setupClient = read('src/app/setup/SetupClient.tsx')
   const signup = read('src/app/signup/page.tsx')
+  const signupClient = read('src/app/signup/SignupClient.tsx')
 
   assert.match(setup, /redirect\(`\/login\$\{suffix\}`\)/)
   assert.match(setup, /safeReturnTo\?\.startsWith\('\/invite\/'\)/)
   assert.match(setup, /getFirstTenantForUser\(session\.user\.id\)/)
   assert.match(setupClient, /Create your Free organization/)
   assert.match(setupClient, /Create Free organization/)
-  assert.match(signup, /returnTo=\$\{encodeURIComponent\(safeReturnTo\)\}/)
-  assert.match(signup, /signup=disabled/)
+  assert.match(signup, /safeReturnTo\?\.startsWith\('\/invite\/'\)/)
+  assert.match(signup, /redirect\(safeReturnTo\)/)
+  assert.match(signupClient, /authClient\.signUp\.email/)
+  assert.match(signupClient, /returnTo \?\? '\/setup'/)
 })

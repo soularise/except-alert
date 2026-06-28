@@ -98,6 +98,15 @@ function LoginForm() {
           Password updated. Sign in with your new password.
         </p>
       )}
+      <p className="mt-6 border-t border-border/60 pt-4 text-sm text-muted-foreground">
+        New here?{' '}
+        <Link
+          href={returnTo ? `/signup?returnTo=${encodeURIComponent(returnTo)}` : '/signup'}
+          className="text-primary hover:underline"
+        >
+          Start Free
+        </Link>
+      </p>
     </>
   )
 }

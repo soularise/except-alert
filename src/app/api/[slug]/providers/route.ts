@@ -5,6 +5,7 @@ import { tenantProviders } from '@/lib/db/schema'
 import { requireTenantAccess } from '@/lib/auth-guard'
 import { PROVIDERS } from '@/lib/providers'
 import { resolveRelayUrl } from '@/lib/relay-url'
+import { limitsFor } from '@/lib/plan-limits'
 
 export async function GET(
   request: NextRequest,
@@ -43,7 +44,12 @@ export async function GET(
       webhookUrlError: relayUrl.error,
     }))
 
-    return NextResponse.json({ providers })
+    return NextResponse.json({
+      providers,
+      plan: access.tenant.plan,
+      providerLimit: limitsFor(access.tenant.plan).providers,
+      configuredProviderCount: rows.length,
+    })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { settings } from '@/lib/db/schema'
 import { requireTenantAccess } from '@/lib/auth-guard'
 import { sendSlackAlert } from '@/lib/slack'
+import { canUseChannel } from '@/lib/plan-limits'
 
 export async function POST(
   request: NextRequest,
@@ -12,6 +13,9 @@ export async function POST(
   const { slug } = await params
   const access = await requireTenantAccess(request, slug, 'admin')
   if (!access) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!canUseChannel(access.tenant.plan, 'slack')) {
+    return NextResponse.json({ error: 'Slack delivery requires Pro or Growth' }, { status: 403 })
+  }
 
   try {
     let webhookUrl: string | null = null

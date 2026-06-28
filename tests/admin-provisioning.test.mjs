@@ -61,16 +61,20 @@ test('admin provisioning creates a credential account with a temporary password'
   assert.match(source, /ingressKey: createIngressKey\(\)/)
 })
 
-test('self-service signup is disabled for provisioned accounts', () => {
+test('public Free signup is enabled while admin provisioning remains paid-path', () => {
   const auth = read('src/lib/auth.ts')
-  assert.match(auth, /disableSignUp:\s*true/)
+  assert.match(auth, /disableSignUp:\s*false/)
 
   const login = read('src/app/login/page.tsx')
-  assert.doesNotMatch(login, /href="\/signup"/)
+  assert.match(login, /\/signup/)
+  assert.match(login, /Start Free/)
 
   const signup = read('src/app/signup/page.tsx')
-  assert.match(signup, /signup=disabled/)
-  assert.doesNotMatch(signup, /authClient\.signUp\.email/)
+  const signupClient = read('src/app/signup/SignupClient.tsx')
+  assert.match(signup, /getFirstTenantForUser\(session\.user\.id\)/)
+  assert.match(signup, /redirect\('\/setup'\)/)
+  assert.match(signupClient, /authClient\.signUp\.email/)
+  assert.match(signupClient, /window\.location\.assign\(returnTo \?\? '\/setup'\)/)
 })
 
 test('admin provisioning instructions do not use forgot password onboarding', () => {

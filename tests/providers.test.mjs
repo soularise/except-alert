@@ -30,6 +30,8 @@ test('supabase is available as an optional-secret provider', () => {
 
   assert.match(listRoute, /secretRequired: p\.secretRequired \?\? true/)
   assert.match(listRoute, /resolveRelayUrl\(request\)/)
+  assert.match(listRoute, /providerLimit: limitsFor\(access\.tenant\.plan\)\.providers/)
+  assert.match(listRoute, /configuredProviderCount: rows\.length/)
   assert.match(detailRoute, /resolveRelayUrl\(request\)/)
   assert.match(detailRoute, /secretRequired && !secret_key\.trim\(\) && !existing/)
   assert.match(relayUrl, /NODE_ENV === 'production'/)
@@ -37,6 +39,8 @@ test('supabase is available as an optional-secret provider', () => {
   assert.match(page, /provider\.secretRequired && !secretDraft\.trim\(\) && !provider\.configured/)
   assert.match(page, /webhookUrl: string \| null/)
   assert.match(page, /webhookUrlError: string \| null/)
+  assert.match(page, /Remove the current source before configuring a replacement/)
+  assert.match(page, /Test events appear in the dashboard and do not count toward monthly usage/)
 })
 
 test('stripe is available for subscription and payment webhooks', () => {

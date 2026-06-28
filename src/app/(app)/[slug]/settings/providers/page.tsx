@@ -29,6 +29,8 @@ type ProviderItem = {
 export default function ProvidersPage() {
   const { tenant, role } = useTenant()
   const [providers, setProviders] = useState<ProviderItem[]>([])
+  const [providerLimit, setProviderLimit] = useState<number | null>(null)
+  const [configuredProviderCount, setConfiguredProviderCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [configuring, setConfiguring] = useState<string | null>(null)
@@ -41,13 +43,20 @@ export default function ProvidersPage() {
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const canManage = role === 'owner' || role === 'admin'
+  const atProviderLimit = providerLimit !== null && configuredProviderCount >= providerLimit
 
   const loadProviders = useCallback(async () => {
     try {
       const res = await fetch(`/api/${tenant.slug}/providers`)
       if (!res.ok) throw new Error('Failed to load sources')
-      const data = await res.json() as { providers: ProviderItem[] }
+      const data = await res.json() as {
+        providers: ProviderItem[]
+        providerLimit: number | null
+        configuredProviderCount: number
+      }
       setProviders(data.providers)
+      setProviderLimit(data.providerLimit)
+      setConfiguredProviderCount(data.configuredProviderCount)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load sources')
@@ -153,6 +162,14 @@ export default function ProvidersPage() {
         <p className="text-sm text-muted-foreground">
           Connect webhook sources to ExceptAlert and copy their ingest URLs.
         </p>
+        {providerLimit !== null && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Your plan includes {providerLimit} configured source{providerLimit === 1 ? '' : 's'}.
+            {atProviderLimit
+              ? ' Remove the current source before configuring a replacement.'
+              : ' Test events appear in the dashboard and do not count toward monthly usage.'}
+          </p>
+        )}
       </div>
 
       {providers.map((provider) => {
@@ -226,7 +243,9 @@ export default function ProvidersPage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      disabled={atProviderLimit}
                       onClick={() => isConfiguring ? cancelConfigure() : openConfigure(provider.id)}
+                      title={atProviderLimit ? 'Remove the current source before configuring a replacement' : undefined}
                     >
                       {isConfiguring ? 'Cancel' : 'Configure'}
                     </Button>

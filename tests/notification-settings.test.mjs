@@ -11,6 +11,7 @@ function read(path) {
 
 test('notification settings include per-event Slack and Telegram toggles', () => {
   const route = read('src/app/api/[slug]/settings/route.ts')
+  const slackTest = read('src/app/api/[slug]/settings/slack-test/route.ts')
   const page = read('src/app/(app)/[slug]/settings/page.tsx')
   const layout = read('src/app/(app)/[slug]/settings/layout.tsx')
   const sidebar = read('src/components/AppSidebar.tsx')
@@ -21,8 +22,12 @@ test('notification settings include per-event Slack and Telegram toggles', () =>
   assert.match(route, /typeof val === 'boolean'/)
   assert.match(page, /Notify Slack for every new event/)
   assert.match(page, /Notify Telegram for every new event/)
-  assert.match(page, /slack_notify_on_event: slackNotifyOnEvent/)
+  assert.match(page, /slack_notify_on_event: canUseSlack \? slackNotifyOnEvent : false/)
   assert.match(page, /telegram_notify_on_event: telegramNotifyOnEvent/)
+  assert.match(page, /Slack delivery requires Pro or Growth/)
+  assert.match(page, /canUseChannel\(tenant\.plan, 'slack'\)/)
+  assert.match(route, /key\.startsWith\('slack_'\) && !canUseChannel\(access\.tenant\.plan, 'slack'\)/)
+  assert.match(slackTest, /Slack delivery requires Pro or Growth/)
   assert.match(layout, /label: 'Notifications'/)
   assert.match(layout, /label: 'Sources'/)
   assert.match(layout, /label: 'Account'/)
