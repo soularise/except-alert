@@ -60,16 +60,6 @@ export const auth = betterAuth({
           },
         }),
   },
-  databaseHooks: {
-    user: {
-      create: {
-        after: async (user) => {
-          const { createTenantForUser } = await import('./tenancy')
-          await createTenantForUser(user.id, user.name)
-        },
-      },
-    },
-  },
   secret:  authSecret ?? 'except-alert-local-dev-secret-change-me',
   baseURL: authBaseUrl,
   trustedOrigins: Array.from(new Set(defaultTrustedOrigins)),

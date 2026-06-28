@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { hashPassword } from 'better-auth/crypto'
 import { db } from './db'
 import { authAccount, authUser, tenantMemberships, tenants } from './db/schema'
+import { createIngressKey } from './organization-lifecycle'
 
 type ProvisionInput = {
   customerEmail: string
@@ -91,7 +92,12 @@ export async function provisionCustomer(input: ProvisionInput): Promise<Provisio
 
     const [createdTenant] = await tx
       .insert(tenants)
-      .values({ name: organizationName, slug })
+      .values({
+        name: organizationName,
+        slug,
+        plan: 'pro',
+        ingressKey: createIngressKey(),
+      })
       .returning()
 
     await tx.insert(tenantMemberships).values({

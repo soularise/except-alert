@@ -2,7 +2,12 @@ import { notFound } from 'next/navigation'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { tenants } from '@/lib/db/schema'
-import { DEFAULT_TENANT_ID, getServerSession, getTenantMembership } from '@/lib/tenancy'
+import {
+  DEFAULT_TENANT_ID,
+  getServerSession,
+  getTenantMembership,
+  getTenantsForUser,
+} from '@/lib/tenancy'
 import { TenantProvider } from '@/components/TenantProvider'
 import { AppSidebar } from '@/components/AppSidebar'
 
@@ -37,12 +42,15 @@ export default async function TenantLayout({
   const session = await getServerSession()
   if (!session) notFound()
 
-  const membership = await getTenantMembership(slug, session.user.id)
+  const [membership, organizations] = await Promise.all([
+    getTenantMembership(slug, session.user.id),
+    getTenantsForUser(session.user.id),
+  ])
   if (!membership) notFound()
 
   return (
     <div className="flex h-full">
-      <AppSidebar slug={slug} />
+      <AppSidebar slug={slug} organizations={organizations} />
       <main className="min-w-0 flex-1 overflow-y-auto pt-14 md:pt-0">
         <TenantProvider
           tenant={membership.tenant}

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { createTenantForUser } from '@/lib/tenancy'
+import {
+  createSelfServeFreeOrganization,
+  OrganizationLifecycleError,
+} from '@/lib/organization-lifecycle'
 
 export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers })
@@ -17,9 +20,13 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const tenant = await createTenantForUser(session.user.id, name.trim())
+    const tenant = await createSelfServeFreeOrganization(session.user.id, name.trim())
     return NextResponse.json({ slug: tenant.slug })
-  } catch {
+  } catch (err) {
+    if (err instanceof OrganizationLifecycleError) {
+      const status = err.code === 'self_serve_organization_exists' ? 409 : 400
+      return NextResponse.json({ error: err.message }, { status })
+    }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

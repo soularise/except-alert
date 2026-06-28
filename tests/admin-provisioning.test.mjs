@@ -57,6 +57,8 @@ test('admin provisioning creates a credential account with a temporary password'
   assert.match(source, /hashPassword\(tempPassword\)/)
   assert.match(source, /providerId: 'credential'/)
   assert.match(source, /role: 'owner'/)
+  assert.match(source, /plan: 'pro'/)
+  assert.match(source, /ingressKey: createIngressKey\(\)/)
 })
 
 test('self-service signup is disabled for provisioned accounts', () => {
@@ -67,7 +69,7 @@ test('self-service signup is disabled for provisioned accounts', () => {
   assert.doesNotMatch(login, /href="\/signup"/)
 
   const signup = read('src/app/signup/page.tsx')
-  assert.match(signup, /redirect\('\/login\?signup=disabled'\)/)
+  assert.match(signup, /signup=disabled/)
   assert.doesNotMatch(signup, /authClient\.signUp\.email/)
 })
 

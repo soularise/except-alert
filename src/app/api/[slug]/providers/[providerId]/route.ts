@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { and, eq } from 'drizzle-orm'
+import { and, count, eq, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { tenantProviders } from '@/lib/db/schema'
 import { requireTenantAccess } from '@/lib/auth-guard'
 import { PROVIDERS } from '@/lib/providers'
 import { resolveRelayUrl } from '@/lib/relay-url'
+import { canConfigureProvider, limitsFor } from '@/lib/plan-limits'
 
 type Params = { params: Promise<{ slug: string; providerId: string }> }
 
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       configHelp: providerDef.configHelp ?? null,
       configured: !!row,
       secretKey: row ? '••••••••••' : null,
-      webhookUrl: relayUrl.url ? `${relayUrl.url}/hook/${slug}/${providerId}` : null,
+      webhookUrl: relayUrl.url ? `${relayUrl.url}/hook/${access.tenant.ingressKey}/${providerId}` : null,
       webhookUrlError: relayUrl.error,
     })
   } catch {
@@ -65,48 +66,77 @@ export async function PUT(request: NextRequest, { params }: Params) {
   const secretRequired = providerDef.secretRequired ?? true
 
   try {
-    const [existing] = await db
-      .select()
-      .from(tenantProviders)
-      .where(
-        and(
-          eq(tenantProviders.tenantId, access.tenant.id),
-          eq(tenantProviders.providerId, providerId)
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${access.tenant.id}), 2)`)
+
+      const [existing] = await tx
+        .select()
+        .from(tenantProviders)
+        .where(
+          and(
+            eq(tenantProviders.tenantId, access.tenant.id),
+            eq(tenantProviders.providerId, providerId)
+          )
         )
-      )
-      .limit(1)
+        .limit(1)
 
-    if (typeof secret_key !== 'string') {
-      return NextResponse.json({ error: 'secret_key must be a string' }, { status: 400 })
-    }
+      if (typeof secret_key !== 'string') {
+        throw new Error('invalid_secret_key')
+      }
 
-    if (secretRequired && !secret_key.trim() && !existing) {
-      return NextResponse.json({ error: 'secret_key is required' }, { status: 400 })
-    }
+      if (secretRequired && !secret_key.trim() && !existing) {
+        throw new Error('required_secret_key')
+      }
 
-    const nextSecret = secret_key.trim() || existing?.secretKey || ''
+      if (!existing) {
+        const [providerResult] = await tx
+          .select({ value: count() })
+          .from(tenantProviders)
+          .where(eq(tenantProviders.tenantId, access.tenant.id))
 
-    await db
-      .insert(tenantProviders)
-      .values({
-        tenantId: access.tenant.id,
-        providerId,
-        secretKey: nextSecret,
-        signatureHeader: providerDef.signatureHeader,
-        signatureAlgorithm: providerDef.signatureAlgorithm,
-        config: {},
-      })
-      .onConflictDoUpdate({
-        target: [tenantProviders.tenantId, tenantProviders.providerId],
-        set: {
+        const configuredProviders = providerResult?.value ?? 0
+        if (!canConfigureProvider(access.tenant.plan, configuredProviders)) {
+          throw new Error('provider_limit')
+        }
+      }
+
+      const nextSecret = secret_key.trim() || existing?.secretKey || ''
+
+      await tx
+        .insert(tenantProviders)
+        .values({
+          tenantId: access.tenant.id,
+          providerId,
           secretKey: nextSecret,
           signatureHeader: providerDef.signatureHeader,
           signatureAlgorithm: providerDef.signatureAlgorithm,
-        },
-      })
+          config: {},
+        })
+        .onConflictDoUpdate({
+          target: [tenantProviders.tenantId, tenantProviders.providerId],
+          set: {
+            secretKey: nextSecret,
+            signatureHeader: providerDef.signatureHeader,
+            signatureAlgorithm: providerDef.signatureAlgorithm,
+          },
+        })
+    })
 
     return NextResponse.json({ ok: true })
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.message === 'invalid_secret_key') {
+      return NextResponse.json({ error: 'secret_key must be a string' }, { status: 400 })
+    }
+    if (err instanceof Error && err.message === 'required_secret_key') {
+      return NextResponse.json({ error: 'secret_key is required' }, { status: 400 })
+    }
+    if (err instanceof Error && err.message === 'provider_limit') {
+      const limit = limitsFor(access.tenant.plan).providers
+      return NextResponse.json(
+        { error: `Your current plan allows ${limit} configured provider${limit === 1 ? '' : 's'}.` },
+        { status: 403 }
+      )
+    }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -1,5 +1,6 @@
 import test, { before, after } from 'node:test'
 import assert from 'node:assert/strict'
+import { createHmac } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -16,12 +17,20 @@ function fixture(name) {
 }
 
 async function postToRelay(provider, body) {
+  return postToRelayWithHeaders(provider, body, {})
+}
+
+async function postToRelayWithHeaders(provider, body, headers) {
   const res = await fetch(`${RELAY_BASE}/hook/${provider}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(body),
   })
   return res
+}
+
+function hmacSignature(secret, body) {
+  return `sha256=${createHmac('sha256', secret).update(JSON.stringify(body)).digest('hex')}`
 }
 
 let sql
@@ -129,7 +138,10 @@ test('github workflow-run-failed — shallow smoke test', async (t) => {
   })
 
   const body = fixture('github-workflow-run-failed.json')
-  const res = await postToRelay('github', body)
+  const githubSecret = process.env.RELAY_GITHUB_SECRET ?? '${RELAY_GITHUB_SECRET}'
+  const res = await postToRelayWithHeaders('github', body, {
+    'x-hub-signature-256': hmacSignature(githubSecret, body),
+  })
   const text = await res.text()
   assert.equal(res.status, 200, `Relay returned ${res.status}: ${text}`)
   const data = JSON.parse(text)

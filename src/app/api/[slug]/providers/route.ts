@@ -39,7 +39,7 @@ export async function GET(
       docsUrl: p.docsUrl,
       eventCategories: p.eventCategories,
       configured: configuredIds.has(p.id),
-      webhookUrl: relayUrl.url ? `${relayUrl.url}/hook/${slug}/${p.id}` : null,
+      webhookUrl: relayUrl.url ? `${relayUrl.url}/hook/${access.tenant.ingressKey}/${p.id}` : null,
       webhookUrlError: relayUrl.error,
     }))
 

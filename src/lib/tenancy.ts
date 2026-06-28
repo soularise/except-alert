@@ -4,9 +4,11 @@ import { cache } from 'react'
 import { db } from './db'
 import { auth } from './auth'
 import { tenantInvitations, tenantMemberships, tenants } from './db/schema'
+import { createIngressKey } from './organization-lifecycle'
 
 export const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000001'
 
+/** @deprecated Use explicit organization lifecycle operations instead. */
 export async function createTenantForUser(userId: string, userName: string) {
   let slug = userName
     .toLowerCase()
@@ -20,7 +22,13 @@ export async function createTenantForUser(userId: string, userName: string) {
 
   const [tenant] = await db
     .insert(tenants)
-    .values({ name: `${userName}'s Org`, slug })
+    .values({
+      name: `${userName}'s Org`,
+      slug,
+      plan: 'free',
+      createdByUserId: userId,
+      ingressKey: createIngressKey(),
+    })
     .returning()
 
   await db.insert(tenantMemberships).values({
@@ -55,6 +63,19 @@ export async function getFirstTenantForUser(userId: string) {
     .orderBy(tenantMemberships.joinedAt)
     .limit(1)
   return row ?? null
+}
+
+export async function getTenantsForUser(userId: string) {
+  return db
+    .select({
+      name: tenants.name,
+      slug: tenants.slug,
+      role: tenantMemberships.role,
+    })
+    .from(tenantMemberships)
+    .innerJoin(tenants, eq(tenantMemberships.tenantId, tenants.id))
+    .where(eq(tenantMemberships.userId, userId))
+    .orderBy(tenantMemberships.joinedAt)
 }
 
 export async function createInvitation(

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { and, count, eq, gt, isNull } from 'drizzle-orm'
+import { db } from '@/lib/db'
+import { tenantInvitations, tenantMemberships } from '@/lib/db/schema'
 import { requireTenantAccess } from '@/lib/auth-guard'
 import { createInvitation } from '@/lib/tenancy'
+import { canInviteMember, limitsFor } from '@/lib/plan-limits'
 
 const VALID_INVITE_ROLES = new Set(['admin', 'member', 'viewer'])
 
@@ -29,6 +33,31 @@ export async function POST(
   }
 
   try {
+    const [memberResult] = await db
+      .select({ value: count() })
+      .from(tenantMemberships)
+      .where(eq(tenantMemberships.tenantId, access.tenant.id))
+
+    const [pendingResult] = await db
+      .select({ value: count() })
+      .from(tenantInvitations)
+      .where(
+        and(
+          eq(tenantInvitations.tenantId, access.tenant.id),
+          isNull(tenantInvitations.acceptedAt),
+          gt(tenantInvitations.expiresAt, new Date())
+        )
+      )
+
+    const occupiedSeats = (memberResult?.value ?? 0) + (pendingResult?.value ?? 0)
+    if (!canInviteMember(access.tenant.plan, occupiedSeats)) {
+      const limit = limitsFor(access.tenant.plan).members
+      return NextResponse.json(
+        { error: `Your current plan allows ${limit} organization member${limit === 1 ? '' : 's'}.` },
+        { status: 403 }
+      )
+    }
+
     const invitation = await createInvitation(
       access.tenant.id,
       access.user.id,

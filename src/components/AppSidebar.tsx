@@ -14,17 +14,32 @@ import {
   X,
   User,
   UserPlus,
+  Building2,
 } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { Separator } from '@/components/ui/separator'
 import { PaletteToggle } from '@/components/PaletteToggle'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+
+type OrganizationOption = {
+  name: string
+  slug: string
+  role: string
+}
 
 interface AppSidebarProps {
   slug: string
   authDisabled?: boolean
+  organizations?: OrganizationOption[]
 }
 
-export function AppSidebar({ slug, authDisabled = false }: AppSidebarProps) {
+export function AppSidebar({ slug, authDisabled = false, organizations = [] }: AppSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { data: session } = authClient.useSession()
@@ -61,6 +76,12 @@ export function AppSidebar({ slug, authDisabled = false }: AppSidebarProps) {
     await authClient.signOut()
     setMobileOpen(false)
     router.push('/login')
+  }
+
+  function handleOrganizationChange(nextSlug: string | null) {
+    if (!nextSlug || nextSlug === slug) return
+    setMobileOpen(false)
+    router.push(`/${nextSlug}/dashboard`)
   }
 
   useEffect(() => {
@@ -135,6 +156,24 @@ export function AppSidebar({ slug, authDisabled = false }: AppSidebarProps) {
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {!authDisabled && organizations.length > 1 && (
+          <div className="px-4 pb-5">
+            <Select value={slug} onValueChange={handleOrganizationChange}>
+              <SelectTrigger className="h-auto min-h-10 w-full border-sidebar-border/70 bg-sidebar-accent/40 px-3 py-2 text-left text-sidebar-foreground">
+                <Building2 className="h-4 w-4 shrink-0 text-sidebar-foreground/50" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {organizations.map((organization) => (
+                  <SelectItem key={organization.slug} value={organization.slug}>
+                    {organization.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
 

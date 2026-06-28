@@ -7,6 +7,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
 
@@ -64,13 +65,21 @@ export const authVerification = pgTable('verification', {
 
 // ─── Tenant tables ────────────────────────────────────────────────────────────
 
-export const tenants = pgTable('tenants', {
-  id:        uuid('id').primaryKey().defaultRandom(),
-  name:      text('name').notNull(),
-  slug:      text('slug').notNull().unique(),
-  config:    jsonb('config').default({}),
-  createdAt: timestamptz('created_at').notNull().defaultNow(),
-})
+export const tenants = pgTable(
+  'tenants',
+  {
+    id:                    uuid('id').primaryKey().defaultRandom(),
+    name:                  text('name').notNull(),
+    slug:                  text('slug').notNull().unique(),
+    plan:                  text('plan').notNull().default('free'),
+    config:                jsonb('config').default({}),
+    createdByUserId:       text('created_by_user_id').references(() => authUser.id),
+    onboardingCompletedAt: timestamptz('onboarding_completed_at'),
+    ingressKey:            text('ingress_key').notNull(),
+    createdAt:             timestamptz('created_at').notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('tenants_ingress_key_unique').on(t.ingressKey)]
+)
 
 export const tenantMemberships = pgTable('tenant_memberships', {
   id:        uuid('id').primaryKey().defaultRandom(),
