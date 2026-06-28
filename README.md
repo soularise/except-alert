@@ -84,18 +84,34 @@ DATABASE_URL=postgres://relay:relay@localhost:5432/relay npm run dev
 
 ## Migrations
 
-Migrations are plain SQL files in `drizzle/migrations/`. They are not applied automatically on container boot — apply them manually after first boot or after a volume wipe:
+Migrations are plain SQL files in `drizzle/migrations/`. They are not applied automatically on container boot. Apply the exact new migration file during deploy before restarting the app:
+
+```bash
+npm run db:apply -- drizzle/migrations/0007_organizations_and_plans.sql
+```
+
+The script loads `.env` and `.env.production.local` when present, so it works in the Hermes runtime where `psql` is not installed. For production, run it from `/opt/data/services/except-alert` after pulling the latest code and before restarting `next start`.
+
+Local Docker can still use `psql` directly:
 
 ```bash
 docker exec -i except-alert-postgres-1 psql -U relay relay < drizzle/migrations/0001_extend_events.sql
 docker exec -i except-alert-postgres-1 psql -U relay relay < drizzle/migrations/0002_exceptalert_tables.sql
 ```
 
-During local development you can run migrations directly against the local database:
+During local development you can also run an explicit migration through the app's Node database client:
 
 ```bash
-DATABASE_URL=postgres://relay:relay@localhost:5432/relay npx drizzle-kit migrate
+DATABASE_URL=postgres://relay:relay@localhost:5432/relay npm run db:apply -- drizzle/migrations/0007_organizations_and_plans.sql
 ```
+
+Deployment checklist for schema changes:
+
+1. Pull Relay and ExceptAlert.
+2. Apply any new Relay migration first when Relay owns the affected table or column.
+3. Apply the new ExceptAlert SQL file with `npm run db:apply -- <migration-file>`.
+4. Restart Relay, then restart ExceptAlert.
+5. Open the affected app route and check server logs for migration-related errors.
 
 ## Admin Provisioning
 

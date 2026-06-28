@@ -13,7 +13,7 @@ ALTER TABLE tenants
   ADD COLUMN IF NOT EXISTS ingress_key TEXT;
 
 UPDATE tenants
-SET ingress_key = 'org_' || encode(gen_random_bytes(16), 'hex')
+SET ingress_key = 'org_' || replace(gen_random_uuid()::text, '-', '')
 WHERE ingress_key IS NULL;
 
 ALTER TABLE tenants
