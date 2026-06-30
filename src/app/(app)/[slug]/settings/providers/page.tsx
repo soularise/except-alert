@@ -37,8 +37,9 @@ export default function ProvidersPage() {
   const [secretDraft, setSecretDraft] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<{ ok: boolean; text: string; eventId?: string } | null>(null)
+  const [testingProvider, setTestingProvider] = useState<string | null>(null)
+  const [testResult, setTestResult] =
+    useState<{ providerId: string; ok: boolean; text: string; eventId?: string } | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -120,22 +121,22 @@ export default function ProvidersPage() {
   }
 
   async function handleTest(providerId: string) {
-    setTesting(true)
+    setTestingProvider(providerId)
     setTestResult(null)
     try {
       const res = await fetch(`/api/${tenant.slug}/providers/${providerId}/test`, { method: 'POST' })
       const data = await res.json() as { ok?: boolean; eventId?: string; error?: string }
       if (res.status === 429) {
-        setTestResult({ ok: false, text: 'Rate limited — wait 30 seconds between tests.' })
+        setTestResult({ providerId, ok: false, text: 'Rate limited. Wait 30 seconds between tests.' })
       } else if (!res.ok || !data.ok) {
-        setTestResult({ ok: false, text: data.error ?? 'Test failed.' })
+        setTestResult({ providerId, ok: false, text: data.error ?? 'Test failed.' })
       } else {
-        setTestResult({ ok: true, text: 'Test event sent successfully.', eventId: data.eventId })
+        setTestResult({ providerId, ok: true, text: 'Test event sent successfully.', eventId: data.eventId })
       }
     } catch {
-      setTestResult({ ok: false, text: 'Test failed — network error.' })
+      setTestResult({ providerId, ok: false, text: 'Test failed. Network error.' })
     } finally {
-      setTesting(false)
+      setTestingProvider(null)
     }
   }
 
@@ -176,6 +177,8 @@ export default function ProvidersPage() {
         const isConfiguring = configuring === provider.id
         const isCopied = copied === provider.id
         const isCopiedPanel = copied === `${provider.id}-panel`
+        const isTesting = testingProvider === provider.id
+        const providerTestResult = testResult?.providerId === provider.id ? testResult : null
 
         return (
           <div key={provider.id} className="rounded-lg border bg-card">
@@ -226,6 +229,14 @@ export default function ProvidersPage() {
                       <Button
                         variant="outline"
                         size="sm"
+                        disabled={isTesting}
+                        onClick={() => handleTest(provider.id)}
+                      >
+                        {isTesting ? 'Sending...' : 'Send Test'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => isConfiguring ? cancelConfigure() : openConfigure(provider.id)}
                       >
                         {isConfiguring ? 'Cancel' : 'Edit'}
@@ -253,6 +264,20 @@ export default function ProvidersPage() {
                 </div>
               )}
             </div>
+
+            {provider.configured && !isConfiguring && providerTestResult && (
+              <div className={`mx-4 mb-4 rounded-md p-3 text-sm ${providerTestResult.ok ? 'bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200' : 'bg-destructive/10 text-destructive'}`}>
+                <p>{providerTestResult.text}</p>
+                {providerTestResult.ok && providerTestResult.eventId && (
+                  <Link
+                    href={`/${tenant.slug}/dashboard`}
+                    className="mt-1 inline-block text-xs underline"
+                  >
+                    View in dashboard
+                  </Link>
+                )}
+              </div>
+            )}
 
             {/* Inline configure panel */}
             {isConfiguring && (
@@ -341,11 +366,11 @@ export default function ProvidersPage() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      disabled={testing || !provider.configured}
+                      disabled={isTesting || !provider.configured}
                       onClick={() => handleTest(provider.id)}
                       title={!provider.configured ? 'Save a secret first' : undefined}
                     >
-                      {testing ? 'Sending...' : 'Send Test Event'}
+                      {isTesting ? 'Sending...' : 'Send Test Event'}
                     </Button>
                     <Button
                       type="button"
@@ -357,15 +382,15 @@ export default function ProvidersPage() {
                     </Button>
                   </div>
 
-                  {testResult && (
-                    <div className={`rounded-md p-3 text-sm ${testResult.ok ? 'bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200' : 'bg-destructive/10 text-destructive'}`}>
-                      <p>{testResult.text}</p>
-                      {testResult.ok && testResult.eventId && (
+                  {providerTestResult && (
+                    <div className={`rounded-md p-3 text-sm ${providerTestResult.ok ? 'bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200' : 'bg-destructive/10 text-destructive'}`}>
+                      <p>{providerTestResult.text}</p>
+                      {providerTestResult.ok && providerTestResult.eventId && (
                         <Link
                           href={`/${tenant.slug}/dashboard`}
                           className="mt-1 inline-block text-xs underline"
                         >
-                          View in dashboard →
+                          View in dashboard
                         </Link>
                       )}
                     </div>

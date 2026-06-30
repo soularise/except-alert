@@ -12,6 +12,7 @@ function read(path) {
 test('new Free organizations get a dashboard activation path', () => {
   const dashboardPage = read('src/app/(app)/[slug]/dashboard/page.tsx')
   const dashboardClient = read('src/components/DashboardClient.tsx')
+  const providersPage = read('src/app/(app)/[slug]/settings/providers/page.tsx')
 
   assert.match(dashboardPage, /tenantProviders/)
   assert.match(dashboardPage, /configuredProviderCount/)
@@ -21,4 +22,7 @@ test('new Free organizations get a dashboard activation path', () => {
   assert.match(dashboardClient, /Create one source/)
   assert.match(dashboardClient, /Send a test event/)
   assert.match(dashboardClient, /\/settings\/providers/)
+  assert.match(providersPage, /provider\.configured && !isConfiguring && providerTestResult/)
+  assert.match(providersPage, /Send Test/)
+  assert.match(providersPage, /View in dashboard/)
 })
