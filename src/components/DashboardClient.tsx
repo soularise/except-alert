@@ -8,6 +8,7 @@ import { EventTimeline } from '@/components/EventTimeline'
 import { SummaryTiles } from '@/components/SummaryTiles'
 import { useTenant } from '@/components/TenantProvider'
 import { buttonVariants } from '@/components/ui/button'
+import { limitsFor } from '@/lib/plan-limits'
 import { cn } from '@/lib/utils'
 
 interface DashboardClientProps {
@@ -16,6 +17,7 @@ interface DashboardClientProps {
   criticalCount: number
   totalEventCount: number
   configuredProviderCount: number
+  monthlyExternalEventCount: number
 }
 
 export function DashboardClient({
@@ -24,6 +26,7 @@ export function DashboardClient({
   criticalCount,
   totalEventCount,
   configuredProviderCount,
+  monthlyExternalEventCount,
 }: DashboardClientProps) {
   const [recentCount, setRecentCount] = useState<number>(0)
   const filtersKey = JSON.stringify(initialFilters)
@@ -36,6 +39,7 @@ export function DashboardClient({
         criticalCount={criticalCount}
         recentCount={recentCount}
       />
+      <MonthlyUsageMeter monthlyExternalEventCount={monthlyExternalEventCount} />
       {showActivationPanel && (
         <DashboardActivationPanel configuredProviderCount={configuredProviderCount} />
       )}
@@ -47,6 +51,56 @@ export function DashboardClient({
         suppressEmptyState={showActivationPanel}
       />
     </div>
+  )
+}
+
+function MonthlyUsageMeter({
+  monthlyExternalEventCount,
+}: {
+  monthlyExternalEventCount: number
+}) {
+  const { tenant } = useTenant()
+  const limit = limitsFor(tenant.plan).externalEventsPerMonth
+  const percent =
+    limit === null ? 0 : Math.min(100, Math.round((monthlyExternalEventCount / limit) * 100))
+  const nearLimit = limit !== null && percent >= 80
+
+  return (
+    <section className="rounded-lg border border-border/70 bg-card p-4 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-foreground">Monthly usage</p>
+          <p className="text-xs text-muted-foreground">
+            External events this month. Test events and account security events are excluded.
+          </p>
+        </div>
+        <div className="text-left sm:text-right">
+          <p
+            className={cn(
+              'text-lg font-semibold text-foreground',
+              nearLimit && 'text-amber-700'
+            )}
+          >
+            {monthlyExternalEventCount.toLocaleString()}
+            {limit !== null && (
+              <span className="text-sm font-normal text-muted-foreground">
+                {' '}
+                / {limit.toLocaleString()}
+              </span>
+            )}
+          </p>
+          <p className="text-xs text-muted-foreground">{tenant.plan.toUpperCase()} plan</p>
+        </div>
+      </div>
+      {limit !== null && (
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+          <div
+            className={cn('h-full rounded-full bg-primary', nearLimit && 'bg-amber-500')}
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+      )}
+    </section>
   )
 }
 
