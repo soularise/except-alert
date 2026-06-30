@@ -23,6 +23,7 @@ interface ApiResponse {
 interface EventTimelineProps {
   filters: Filters
   onRecentCount?: (count: number) => void
+  suppressEmptyState?: boolean
 }
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
@@ -39,7 +40,7 @@ function buildUrl(slug: string, filters: Filters, page: number, pageSize: number
   return `/api/${slug}/events${qs ? `?${qs}` : ''}`
 }
 
-export function EventTimeline({ filters, onRecentCount }: EventTimelineProps) {
+export function EventTimeline({ filters, onRecentCount, suppressEmptyState = false }: EventTimelineProps) {
   const { tenant } = useTenant()
   const [events, setEvents] = useState<Event[]>([])
   const [totalCount, setTotalCount] = useState(0)
@@ -152,6 +153,8 @@ export function EventTimeline({ filters, onRecentCount }: EventTimelineProps) {
   }
 
   if (events.length === 0 && totalCount === 0) {
+    if (suppressEmptyState) return null
+
     return (
       <div className="flex flex-col gap-3">
         <PaginationControls

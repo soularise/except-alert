@@ -15,7 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <head>
         <script dangerouslySetInnerHTML={{
-          __html: `(function(){try{var p=localStorage.getItem('ea-palette');if(p==='monitoring')document.documentElement.dataset.palette='monitoring'}catch(e){}})()`,
+          __html: `(function(){try{var p=localStorage.getItem('ea-palette');if(p==='monitoring')p='signal';if(p==='signal'||p==='terminal')document.documentElement.dataset.palette=p}catch(e){}})()`,
         }} />
       </head>
       <body className="flex h-full bg-background text-foreground">

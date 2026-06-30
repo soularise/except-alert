@@ -12,6 +12,7 @@ function read(path) {
 test('new Free organizations get a dashboard activation path', () => {
   const dashboardPage = read('src/app/(app)/[slug]/dashboard/page.tsx')
   const dashboardClient = read('src/components/DashboardClient.tsx')
+  const eventTimeline = read('src/components/EventTimeline.tsx')
   const providersPage = read('src/app/(app)/[slug]/settings/providers/page.tsx')
 
   assert.match(dashboardPage, /tenantProviders/)
@@ -22,6 +23,10 @@ test('new Free organizations get a dashboard activation path', () => {
   assert.match(dashboardClient, /Create one source/)
   assert.match(dashboardClient, /Send a test event/)
   assert.match(dashboardClient, /\/settings\/providers/)
+  assert.match(dashboardClient, /suppressEmptyState=\{showActivationPanel\}/)
+  assert.match(eventTimeline, /suppressEmptyState = false/)
+  assert.match(eventTimeline, /if \(suppressEmptyState\) return null/)
+  assert.match(eventTimeline, /No events yet\. Send a webhook to get started\./)
   assert.match(providersPage, /provider\.configured && !isConfiguring && providerTestResult/)
   assert.match(providersPage, /Send Test/)
   assert.match(providersPage, /View in dashboard/)

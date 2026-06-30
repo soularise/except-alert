@@ -40,7 +40,12 @@ export function DashboardClient({
         <DashboardActivationPanel configuredProviderCount={configuredProviderCount} />
       )}
       <FilterBar filters={initialFilters} />
-      <EventTimeline key={filtersKey} filters={initialFilters} onRecentCount={setRecentCount} />
+      <EventTimeline
+        key={filtersKey}
+        filters={initialFilters}
+        onRecentCount={setRecentCount}
+        suppressEmptyState={showActivationPanel}
+      />
     </div>
   )
 }

@@ -1,29 +1,51 @@
 'use client'
 
 import { useState } from 'react'
+import { Palette } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from '@/components/ui/select'
 
-type Palette = 'healthcare' | 'monitoring'
+type AppPalette = 'classic' | 'signal' | 'terminal'
+
+const PALETTE_OPTIONS: Array<{
+  value: AppPalette
+  label: string
+  swatch: string
+}> = [
+  { value: 'classic',  label: 'Classic',  swatch: 'bg-blue-500' },
+  { value: 'signal',   label: 'Signal',   swatch: 'bg-teal-500' },
+  { value: 'terminal', label: 'Terminal', swatch: 'bg-green-400' },
+]
 
 const STORAGE_KEY = 'ea-palette'
 
-function getInitialPalette(): Palette {
-  if (typeof window === 'undefined') return 'healthcare'
+function normalizePalette(value: string | null): AppPalette {
+  if (value === 'terminal') return 'terminal'
+  if (value === 'signal' || value === 'monitoring') return 'signal'
+  return 'classic'
+}
+
+function getInitialPalette(): AppPalette {
+  if (typeof window === 'undefined') return 'classic'
   try {
-    return window.localStorage.getItem(STORAGE_KEY) === 'monitoring'
-      ? 'monitoring'
-      : 'healthcare'
+    return normalizePalette(window.localStorage.getItem(STORAGE_KEY))
   } catch {
-    return 'healthcare'
+    return 'classic'
   }
 }
 
 export function PaletteToggle() {
-  const [palette, setPalette] = useState<Palette>(getInitialPalette)
+  const [palette, setPalette] = useState<AppPalette>(getInitialPalette)
+  const selectedOption = PALETTE_OPTIONS.find((option) => option.value === palette) ?? PALETTE_OPTIONS[0]
 
-  function apply(p: Palette) {
+  function apply(p: AppPalette) {
     setPalette(p)
     window.localStorage.setItem(STORAGE_KEY, p)
-    if (p === 'healthcare') {
+    if (p === 'classic') {
       delete document.documentElement.dataset.palette
     } else {
       document.documentElement.dataset.palette = p
@@ -31,29 +53,24 @@ export function PaletteToggle() {
   }
 
   return (
-    <div className="flex gap-1 px-3 pb-2">
-      <button
-        onClick={() => apply('healthcare')}
-        className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors ${
-          palette === 'healthcare'
-            ? 'bg-primary/20 text-primary font-medium'
-            : 'text-sidebar-foreground/50 hover:text-sidebar-foreground'
-        }`}
-      >
-        <span className="size-2 rounded-full bg-blue-500" />
-        Healthcare
-      </button>
-      <button
-        onClick={() => apply('monitoring')}
-        className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors ${
-          palette === 'monitoring'
-            ? 'bg-primary/20 text-primary font-medium'
-            : 'text-sidebar-foreground/50 hover:text-sidebar-foreground'
-        }`}
-      >
-        <span className="size-2 rounded-full bg-teal-500" />
-        Monitoring
-      </button>
+    <div className="px-2 pb-3">
+      <Select value={palette} onValueChange={(value) => apply(normalizePalette(value))}>
+        <SelectTrigger className="h-8 w-full border-sidebar-border/70 bg-sidebar-accent/40 px-3 text-sidebar-foreground hover:bg-sidebar-accent">
+          <Palette className="size-4 shrink-0 text-sidebar-foreground/50" />
+          <span className="flex flex-1 items-center gap-1.5 text-left text-sm">
+            <span className={`size-2 rounded-full ${selectedOption.swatch}`} />
+            {selectedOption.label}
+          </span>
+        </SelectTrigger>
+        <SelectContent align="start" side="top" className="min-w-40">
+          {PALETTE_OPTIONS.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              <span className={`size-2 rounded-full ${option.swatch}`} />
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   )
 }
