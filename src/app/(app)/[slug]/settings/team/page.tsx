@@ -20,6 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useTenant } from '@/components/TenantProvider'
+import { limitsFor } from '@/lib/plan-limits'
 
 type Member = {
   id: string
@@ -38,7 +39,7 @@ type Invitation = {
 }
 
 export default function TeamPage() {
-  const { tenant, authDisabled } = useTenant()
+  const { tenant, role: tenantRole, authDisabled } = useTenant()
   const [members, setMembers] = useState<Member[]>([])
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [email, setEmail] = useState('')
@@ -47,6 +48,10 @@ export default function TeamPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const canManageTeam = tenantRole === 'owner' || tenantRole === 'admin'
+  const memberLimit = limitsFor(tenant.plan).members
+  const occupiedSeats = members.length + invitations.length
+  const atMemberLimit = memberLimit !== null && occupiedSeats >= memberLimit
 
   const loadTeam = useCallback(async () => {
     setLoading(true)
@@ -111,6 +116,30 @@ export default function TeamPage() {
           style={{ width: '760px', maxWidth: '100%' }}
         >
           Team invitations are available when authentication is enabled.
+        </div>
+      ) : !canManageTeam ? (
+        <div
+          className="mb-8 max-w-3xl rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground"
+          style={{ width: '760px', maxWidth: '100%' }}
+        >
+          Ask an admin or owner to invite teammates.
+        </div>
+      ) : loading ? (
+        <div
+          className="mb-8 max-w-3xl rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground"
+          style={{ width: '760px', maxWidth: '100%' }}
+        >
+          Loading team limits...
+        </div>
+      ) : atMemberLimit ? (
+        <div
+          className="mb-8 max-w-3xl rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground"
+          style={{ width: '760px', maxWidth: '100%' }}
+        >
+          <p className="font-medium text-foreground">Your current plan includes {memberLimit} member{memberLimit === 1 ? '' : 's'}.</p>
+          <p className="mt-1">
+            Free workspaces are single-user. Upgrade to Pro when you are ready to invite teammates.
+          </p>
         </div>
       ) : (
         <form

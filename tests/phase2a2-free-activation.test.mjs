@@ -14,6 +14,7 @@ test('new Free organizations get a dashboard activation path', () => {
   const dashboardClient = read('src/components/DashboardClient.tsx')
   const eventTimeline = read('src/components/EventTimeline.tsx')
   const providersPage = read('src/app/(app)/[slug]/settings/providers/page.tsx')
+  const teamPage = read('src/app/(app)/[slug]/settings/team/page.tsx')
 
   assert.match(dashboardPage, /tenantProviders/)
   assert.match(dashboardPage, /configuredProviderCount/)
@@ -30,4 +31,7 @@ test('new Free organizations get a dashboard activation path', () => {
   assert.match(providersPage, /provider\.configured && !isConfiguring && providerTestResult/)
   assert.match(providersPage, /Send Test/)
   assert.match(providersPage, /View in dashboard/)
+  assert.match(teamPage, /limitsFor\(tenant\.plan\)\.members/)
+  assert.match(teamPage, /atMemberLimit/)
+  assert.match(teamPage, /Free workspaces are single-user/)
 })
