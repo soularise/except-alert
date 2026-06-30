@@ -18,11 +18,13 @@ interface ApiResponse {
   nextCursor: string | null
   totalCount: number
   recentCount: number
+  monthlyExternalEventCount: number
 }
 
 interface EventTimelineProps {
   filters: Filters
   onRecentCount?: (count: number) => void
+  onMonthlyExternalEventCount?: (count: number) => void
   suppressEmptyState?: boolean
 }
 
@@ -40,7 +42,12 @@ function buildUrl(slug: string, filters: Filters, page: number, pageSize: number
   return `/api/${slug}/events${qs ? `?${qs}` : ''}`
 }
 
-export function EventTimeline({ filters, onRecentCount, suppressEmptyState = false }: EventTimelineProps) {
+export function EventTimeline({
+  filters,
+  onRecentCount,
+  onMonthlyExternalEventCount,
+  suppressEmptyState = false,
+}: EventTimelineProps) {
   const { tenant } = useTenant()
   const [events, setEvents] = useState<Event[]>([])
   const [totalCount, setTotalCount] = useState(0)
@@ -59,13 +66,14 @@ export function EventTimeline({ filters, onRecentCount, suppressEmptyState = fal
       setEvents(data.events)
       setTotalCount(data.totalCount)
       onRecentCount?.(data.recentCount)
+      onMonthlyExternalEventCount?.(data.monthlyExternalEventCount)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
       setLoading(false)
     }
-  }, [filters, onRecentCount, page, pageSize, tenant.slug])
+  }, [filters, onMonthlyExternalEventCount, onRecentCount, page, pageSize, tenant.slug])
 
   const poll = useCallback(async () => {
     try {
@@ -73,13 +81,14 @@ export function EventTimeline({ filters, onRecentCount, suppressEmptyState = fal
       if (!res.ok) return
       const data: ApiResponse = await res.json()
       onRecentCount?.(data.recentCount)
+      onMonthlyExternalEventCount?.(data.monthlyExternalEventCount)
       setTotalCount(data.totalCount)
       if (page === 1) {
         setEvents(data.events)
       }
     } catch {
     }
-  }, [filters, onRecentCount, page, pageSize, tenant.slug])
+  }, [filters, onMonthlyExternalEventCount, onRecentCount, page, pageSize, tenant.slug])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

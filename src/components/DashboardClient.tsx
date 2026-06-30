@@ -29,6 +29,8 @@ export function DashboardClient({
   monthlyExternalEventCount,
 }: DashboardClientProps) {
   const [recentCount, setRecentCount] = useState<number>(0)
+  const [currentMonthlyExternalEventCount, setCurrentMonthlyExternalEventCount] =
+    useState(monthlyExternalEventCount)
   const filtersKey = JSON.stringify(initialFilters)
   const showActivationPanel = totalEventCount === 0
 
@@ -39,7 +41,7 @@ export function DashboardClient({
         criticalCount={criticalCount}
         recentCount={recentCount}
       />
-      <MonthlyUsageMeter monthlyExternalEventCount={monthlyExternalEventCount} />
+      <MonthlyUsageMeter monthlyExternalEventCount={currentMonthlyExternalEventCount} />
       {showActivationPanel && (
         <DashboardActivationPanel configuredProviderCount={configuredProviderCount} />
       )}
@@ -48,6 +50,7 @@ export function DashboardClient({
         key={filtersKey}
         filters={initialFilters}
         onRecentCount={setRecentCount}
+        onMonthlyExternalEventCount={setCurrentMonthlyExternalEventCount}
         suppressEmptyState={showActivationPanel}
       />
     </div>

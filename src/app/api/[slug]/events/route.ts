@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { events } from '@/lib/db/schema'
 import { evaluateBaselines } from '@/lib/baselines'
 import { requireTenantAccess } from '@/lib/auth-guard'
+import { getMonthlyExternalEventUsage } from '@/lib/event-usage'
 
 const VALID_SEVERITIES = new Set(['critical', 'error', 'warning', 'info'])
 const VALID_STATUSES = new Set(['open', 'acknowledged', 'resolved', 'dismissed'])
@@ -79,10 +80,14 @@ export async function GET(
     }
 
     const sixtySecondsAgo = new Date(Date.now() - 60_000)
-    const [recentResult] = await db
-      .select({ value: count() })
-      .from(events)
-      .where(and(eq(events.tenantId, access.tenant.id), gte(events.receivedAt, sixtySecondsAgo)))
+    const [recentResult, monthlyExternalEventCount] = await Promise.all([
+      db
+        .select({ value: count() })
+        .from(events)
+        .where(and(eq(events.tenantId, access.tenant.id), gte(events.receivedAt, sixtySecondsAgo)))
+        .then(([result]) => result),
+      getMonthlyExternalEventUsage(access.tenant.id),
+    ])
 
     evaluateBaselines(access.tenant.id).catch((err) =>
       console.error('[events] baseline evaluation error:', err)
@@ -97,6 +102,7 @@ export async function GET(
       nextCursor,
       totalCount: totalResult?.value ?? 0,
       recentCount: recentResult?.value ?? 0,
+      monthlyExternalEventCount,
     })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
