@@ -43,3 +43,18 @@ test('new Free organizations get a dashboard activation path', () => {
   assert.match(teamPage, /atMemberLimit/)
   assert.match(teamPage, /Free workspaces are single-user/)
 })
+
+test('platform admin owned workspaces get internal Growth entitlements', () => {
+  const entitlements = read('src/lib/entitlements.ts')
+  const setupRoute = read('src/app/api/setup/tenant/route.ts')
+  const layout = read('src/app/(app)/[slug]/layout.tsx')
+  const authGuard = read('src/lib/auth-guard.ts')
+
+  assert.match(entitlements, /isPlatformAdminEmail/)
+  assert.match(entitlements, /tenant\.createdByUserId === user\.id/)
+  assert.match(entitlements, /return 'growth'/)
+  assert.match(entitlements, /update\(tenants\)/)
+  assert.match(setupRoute, /isPlatformAdminEmail\(session\.user\.email\) \? 'growth' : 'free'/)
+  assert.match(layout, /ensureEffectiveTenantPlanForUser\(membership\.tenant, session\.user\)/)
+  assert.match(authGuard, /ensureEffectiveTenantPlanForUser\(membership\.tenant, session\.user\)/)
+})

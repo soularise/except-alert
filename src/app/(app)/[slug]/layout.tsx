@@ -8,6 +8,7 @@ import {
   getTenantMembership,
   getTenantsForUser,
 } from '@/lib/tenancy'
+import { ensureEffectiveTenantPlanForUser } from '@/lib/entitlements'
 import { TenantProvider } from '@/components/TenantProvider'
 import { AppSidebar } from '@/components/AppSidebar'
 
@@ -47,13 +48,14 @@ export default async function TenantLayout({
     getTenantsForUser(session.user.id),
   ])
   if (!membership) notFound()
+  const tenant = await ensureEffectiveTenantPlanForUser(membership.tenant, session.user)
 
   return (
     <div className="flex h-full">
       <AppSidebar slug={slug} organizations={organizations} />
       <main className="min-w-0 flex-1 overflow-y-auto pt-14 md:pt-0">
         <TenantProvider
-          tenant={membership.tenant}
+          tenant={tenant}
           role={membership.role as 'owner' | 'admin' | 'member' | 'viewer'}
         >
           {children}

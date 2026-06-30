@@ -27,11 +27,15 @@ export function createIngressKey() {
   return `org_${randomBytes(16).toString('hex')}`
 }
 
-export async function createSelfServeFreeOrganization(userId: string, organizationName: string) {
+export async function createSelfServeFreeOrganization(
+  userId: string,
+  organizationName: string,
+  plan: Plan = 'free'
+) {
   return createOrganization({
     userId,
     organizationName,
-    plan: 'free',
+    plan,
     selfServe: true,
   })
 }

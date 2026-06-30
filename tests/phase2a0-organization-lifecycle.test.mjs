@@ -28,7 +28,8 @@ test('signup creates identity only and setup uses the organization lifecycle ser
 
   assert.doesNotMatch(auth, /databaseHooks/)
   assert.doesNotMatch(auth, /createTenantForUser/)
-  assert.match(setup, /createSelfServeFreeOrganization\(session\.user\.id, name\.trim\(\)\)/)
+  assert.match(setup, /isPlatformAdminEmail\(session\.user\.email\) \? 'growth' : 'free'/)
+  assert.match(setup, /createSelfServeFreeOrganization\(session\.user\.id, name\.trim\(\), plan\)/)
   assert.match(setup, /OrganizationLifecycleError/)
   assert.match(lifecycle, /pg_advisory_xact_lock/)
   assert.match(lifecycle, /createdByUserId: input\.selfServe \? input\.userId : null/)

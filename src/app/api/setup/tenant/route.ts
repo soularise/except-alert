@@ -4,6 +4,7 @@ import {
   createSelfServeFreeOrganization,
   OrganizationLifecycleError,
 } from '@/lib/organization-lifecycle'
+import { isPlatformAdminEmail } from '@/lib/admin'
 
 export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers })
@@ -20,7 +21,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const tenant = await createSelfServeFreeOrganization(session.user.id, name.trim())
+    const plan = isPlatformAdminEmail(session.user.email) ? 'growth' : 'free'
+    const tenant = await createSelfServeFreeOrganization(session.user.id, name.trim(), plan)
     return NextResponse.json({ slug: tenant.slug })
   } catch (err) {
     if (err instanceof OrganizationLifecycleError) {
