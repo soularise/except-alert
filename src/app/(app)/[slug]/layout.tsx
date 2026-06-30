@@ -9,6 +9,7 @@ import {
   getTenantsForUser,
 } from '@/lib/tenancy'
 import { ensureEffectiveTenantPlanForUser } from '@/lib/entitlements'
+import { normalizeTenantRole } from '@/lib/tenant-access'
 import { TenantProvider } from '@/components/TenantProvider'
 import { AppSidebar } from '@/components/AppSidebar'
 
@@ -48,7 +49,13 @@ export default async function TenantLayout({
     getTenantsForUser(session.user.id),
   ])
   if (!membership) notFound()
-  const tenant = await ensureEffectiveTenantPlanForUser(membership.tenant, session.user)
+  const role = normalizeTenantRole(membership.role)
+  if (!role) notFound()
+  const tenant = await ensureEffectiveTenantPlanForUser(
+    membership.tenant,
+    session.user,
+    role
+  )
 
   return (
     <div className="flex h-full">
@@ -56,7 +63,7 @@ export default async function TenantLayout({
       <main className="min-w-0 flex-1 overflow-y-auto pt-14 md:pt-0">
         <TenantProvider
           tenant={tenant}
-          role={membership.role as 'owner' | 'admin' | 'member' | 'viewer'}
+          role={role}
         >
           {children}
         </TenantProvider>

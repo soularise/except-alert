@@ -4,7 +4,7 @@ import { db } from './db'
 import { tenants } from './db/schema'
 import { ensureEffectiveTenantPlanForUser } from './entitlements'
 import { getTenantMembership } from './tenancy'
-import { hasTenantRole, type TenantRole } from './tenant-access'
+import { hasTenantRole, normalizeTenantRole, type TenantRole } from './tenant-access'
 
 export async function requireTenantAccess(
   req: Request,
@@ -30,6 +30,10 @@ export async function requireTenantAccess(
 
   if (!hasTenantRole(membership.role, minRole)) return null
 
-  const tenant = await ensureEffectiveTenantPlanForUser(membership.tenant, session.user)
+  const tenant = await ensureEffectiveTenantPlanForUser(
+    membership.tenant,
+    session.user,
+    normalizeTenantRole(membership.role)
+  )
   return { ...membership, tenant, user: session.user }
 }

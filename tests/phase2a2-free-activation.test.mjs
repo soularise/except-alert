@@ -52,9 +52,10 @@ test('platform admin owned workspaces get internal Growth entitlements', () => {
 
   assert.match(entitlements, /isPlatformAdminEmail/)
   assert.match(entitlements, /tenant\.createdByUserId === user\.id/)
+  assert.match(entitlements, /role === 'owner'/)
   assert.match(entitlements, /return 'growth'/)
   assert.match(entitlements, /update\(tenants\)/)
   assert.match(setupRoute, /isPlatformAdminEmail\(session\.user\.email\) \? 'growth' : 'free'/)
-  assert.match(layout, /ensureEffectiveTenantPlanForUser\(membership\.tenant, session\.user\)/)
-  assert.match(authGuard, /ensureEffectiveTenantPlanForUser\(membership\.tenant, session\.user\)/)
+  assert.match(layout, /membership\.role/)
+  assert.match(authGuard, /membership\.role/)
 })
