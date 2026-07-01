@@ -141,21 +141,29 @@ export const mappings = pgTable('mappings', {
 
 // ─── ExceptAlert-owned data tables ────────────────────────────────────────────
 
-export const events = pgTable('events', {
-  id:          uuid('id').primaryKey().defaultRandom(),
-  tenantId:    uuid('tenant_id').notNull().references(() => tenants.id),
-  hookId:      text('hook_id').notNull(),
-  source:      text('source').notNull(),
-  severity:    text('severity').notNull(),
-  title:       text('title').notNull(),
-  description: text('description'),
-  category:    text('category').notNull(),
-  tags:        jsonb('tags').default({}),
-  payload:     jsonb('payload').notNull(),
-  occurredAt:  timestamptz('occurred_at').notNull(),
-  receivedAt:  timestamptz('received_at').notNull().defaultNow(),
-  status:      text('status').default('open'),
-})
+export const events = pgTable(
+  'events',
+  {
+    id:          uuid('id').primaryKey().defaultRandom(),
+    tenantId:    uuid('tenant_id').notNull().references(() => tenants.id),
+    hookId:      text('hook_id').notNull(),
+    source:      text('source').notNull(),
+    severity:    text('severity').notNull(),
+    title:       text('title').notNull(),
+    description: text('description'),
+    category:    text('category').notNull(),
+    tags:        jsonb('tags').default({}),
+    payload:     jsonb('payload').notNull(),
+    occurredAt:  timestamptz('occurred_at').notNull(),
+    receivedAt:  timestamptz('received_at').notNull().defaultNow(),
+    status:      text('status').default('open'),
+  },
+  (t) => [
+    uniqueIndex('events_controller_hook_unique')
+      .on(t.tenantId, t.hookId)
+      .where(sql`${t.source} = 'controller'`),
+  ]
+)
 
 export const actionTemplates = pgTable('action_templates', {
   id:         uuid('id').primaryKey().defaultRandom(),

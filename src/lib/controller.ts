@@ -1,11 +1,15 @@
+import { lookup } from 'node:dns/promises'
+import net from 'node:net'
 import { and, count, eq, gte, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { controllerJobs, events } from '@/lib/db/schema'
+import { sendTenantAlertNotifications } from '@/lib/notifications'
 import {
   controllerJobConfigSchemas,
   type ControllerJobType,
   type CronDeadlineConfig,
   type DeadLetterConfig,
+  type HealthPingConfig,
 } from '@/lib/controller-jobs'
 
 export type ControllerRunStatus = 'ok' | 'alert' | 'error'
@@ -45,8 +49,12 @@ type SchedulerCounts = {
   skipped: number
 }
 
+type ControllerDb = Pick<typeof db, 'select' | 'insert' | 'update'>
+
 const DEFAULT_BATCH_LIMIT = 25
 const DEFAULT_LEASE_MS = 60_000
+const DEFAULT_REPEAT_COOLDOWN_MS = 60 * 60_000
+const MAX_CRON_SEARCH_MINUTES = 366 * 24 * 60
 
 export async function runControllerScheduler(options: SchedulerOptions = {}) {
   const now = options.now ?? new Date()
@@ -80,11 +88,34 @@ export async function runControllerScheduler(options: SchedulerOptions = {}) {
       })
     }
 
-    const transition = await recordControllerTransition(job, result, now)
-    await finishControllerJob(job, result, transition, now)
-    counts.evaluated += 1
-    if (result.status === 'alert') counts.alerted += 1
-    if (result.status === 'error') counts.errored += 1
+    try {
+      const transition = buildControllerTransition(job, result, now)
+      const insertedEvent = await db.transaction(async (tx) => {
+        const event = await recordControllerTransition(tx, job, result, transition, now)
+        await finishControllerJob(tx, job, result, transition, now)
+        return event
+      })
+
+      if (insertedEvent) {
+        const delivery = await sendTenantAlertNotifications(
+          job.tenantId,
+          controllerNotificationMessage(job, result, insertedEvent.transition)
+        )
+        if (delivery.failed.length > 0) {
+          console.error('[controller] Alert delivery failed:', delivery.failed)
+        }
+      }
+
+      counts.evaluated += 1
+      if (result.status === 'alert') counts.alerted += 1
+      if (result.status === 'error') counts.errored += 1
+    } catch (err) {
+      counts.skipped += 1
+      console.error('[controller] Failed to record controller result:', {
+        jobId: job.id,
+        message: err instanceof Error ? err.message : 'Unknown controller record error',
+      })
+    }
   }
 
   return counts
@@ -150,13 +181,9 @@ async function evaluateControllerJob(
   }
 
   if (job.type === 'health_ping') {
-    return buildRunResult({
-      status: 'error',
-      outcome: 'health_ping_deferred',
-      now,
-      startedAt,
-      details: { reason: 'Network health checks are intentionally deferred.' },
-    })
+    const parsed = controllerJobConfigSchemas.health_ping.safeParse(job.config)
+    if (!parsed.success) return invalidConfigResult(now, startedAt, parsed.error.message)
+    return evaluateHealthPing(parsed.data, now, startedAt)
   }
 
   if (job.type === 'deviation') {
@@ -204,6 +231,56 @@ async function evaluateDeadLetter(
   })
 }
 
+async function evaluateHealthPing(config: HealthPingConfig, now: Date, startedAt: number) {
+  let parsedUrl: URL
+  try {
+    parsedUrl = validateHealthPingUrl(config.url)
+    await assertPublicHealthPingTarget(parsedUrl.hostname)
+  } catch (err) {
+    return buildRunResult({
+      status: 'error',
+      outcome: 'health_ping_target_blocked',
+      now,
+      startedAt,
+      details: { message: err instanceof Error ? err.message : 'Invalid health ping target' },
+    })
+  }
+
+  try {
+    const response = await fetch(parsedUrl, {
+      method: 'GET',
+      redirect: 'manual',
+      signal: AbortSignal.timeout(config.timeoutMs),
+    })
+    await response.body?.cancel()
+
+    const status = response.status === config.expectedStatus ? 'ok' : 'alert'
+    return buildRunResult({
+      status,
+      outcome: status === 'ok' ? 'health_ping_ok' : 'health_ping_status_mismatch',
+      now,
+      startedAt,
+      details: {
+        url: redactUrl(parsedUrl),
+        expectedStatus: config.expectedStatus,
+        actualStatus: response.status,
+      },
+    })
+  } catch (err) {
+    return buildRunResult({
+      status: 'alert',
+      outcome: 'health_ping_request_failed',
+      now,
+      startedAt,
+      details: {
+        url: redactUrl(parsedUrl),
+        expectedStatus: config.expectedStatus,
+        message: err instanceof Error ? err.message : 'Unknown health ping request error',
+      },
+    })
+  }
+}
+
 async function evaluateCronDeadline(
   tenantId: string,
   config: CronDeadlineConfig,
@@ -245,12 +322,13 @@ async function countProviderEvents(tenantId: string, providerId: string, since: 
 }
 
 async function finishControllerJob(
+  tx: ControllerDb,
   job: ClaimedControllerJob,
   result: ControllerRunResult,
   transition: ControllerTransition,
   now: Date
 ) {
-  await db
+  await tx
     .update(controllerJobs)
     .set({
       leaseExpiresAt: null,
@@ -259,7 +337,7 @@ async function finishControllerJob(
       lastResult: result,
       lastAlertedAt: transition.lastAlertedAt,
       alertStartedAt: transition.alertStartedAt,
-      nextRunAt: nextRunAfter(now, job.cronExpr),
+      nextRunAt: nextRunAfter(now, job.cronExpr, job.timezone),
       updatedAt: now,
     })
     .where(eq(controllerJobs.id, job.id))
@@ -268,79 +346,95 @@ async function finishControllerJob(
 type ControllerTransition = {
   alertStartedAt: Date | null
   lastAlertedAt: Date | null
+  eventTransition: 'alert' | 'error' | 'recovery' | null
+  cooldownBucket: number | null
 }
 
-async function recordControllerTransition(
+function buildControllerTransition(
   job: ClaimedControllerJob,
   result: ControllerRunResult,
   now: Date
-): Promise<ControllerTransition> {
+): ControllerTransition {
   const previousStatus = job.lastStatus
 
   if (result.status === 'ok') {
-    if (previousStatus === 'alert' || previousStatus === 'error') {
-      await insertControllerEvent(job, result, 'recovery', now)
+    return {
+      alertStartedAt: null,
+      lastAlertedAt: job.lastAlertedAt,
+      eventTransition: previousStatus === 'alert' || previousStatus === 'error' ? 'recovery' : null,
+      cooldownBucket: null,
     }
-    return { alertStartedAt: null, lastAlertedAt: job.lastAlertedAt }
   }
+
+  const alertStartedAt = job.alertStartedAt ?? now
+  const cooldownBucket = cooldownBucketFor(alertStartedAt, now)
+  const cooldownExpired = !job.lastAlertedAt ||
+    now.getTime() - job.lastAlertedAt.getTime() >= DEFAULT_REPEAT_COOLDOWN_MS
 
   if (result.status === 'alert') {
-    if (previousStatus !== 'alert') {
-      await insertControllerEvent(job, result, 'alert', now)
-      return {
-        alertStartedAt: job.alertStartedAt ?? now,
-        lastAlertedAt: now,
-      }
-    }
+    const shouldNotify = previousStatus !== 'alert' || cooldownExpired
     return {
-      alertStartedAt: job.alertStartedAt ?? now,
-      lastAlertedAt: job.lastAlertedAt,
+      alertStartedAt,
+      lastAlertedAt: shouldNotify ? now : job.lastAlertedAt,
+      eventTransition: shouldNotify ? 'alert' : null,
+      cooldownBucket: shouldNotify ? cooldownBucket : null,
     }
   }
 
-  if (previousStatus !== 'error') {
-    await insertControllerEvent(job, result, 'error', now)
-    return {
-      alertStartedAt: job.alertStartedAt ?? now,
-      lastAlertedAt: now,
-    }
-  }
-
+  const shouldNotify = previousStatus !== 'error' || cooldownExpired
   return {
-    alertStartedAt: job.alertStartedAt ?? now,
-    lastAlertedAt: job.lastAlertedAt,
+    alertStartedAt,
+    lastAlertedAt: shouldNotify ? now : job.lastAlertedAt,
+    eventTransition: shouldNotify ? 'error' : null,
+    cooldownBucket: shouldNotify ? cooldownBucket : null,
   }
 }
 
-async function insertControllerEvent(
+async function recordControllerTransition(
+  tx: ControllerDb,
   job: ClaimedControllerJob,
   result: ControllerRunResult,
-  transition: 'alert' | 'error' | 'recovery',
+  transition: ControllerTransition,
   now: Date
 ) {
+  if (!transition.eventTransition) return null
+  const inserted = await insertControllerEvent(tx, job, result, transition, now)
+  return inserted ? { transition: transition.eventTransition } : null
+}
+
+async function insertControllerEvent(
+  tx: ControllerDb,
+  job: ClaimedControllerJob,
+  result: ControllerRunResult,
+  transition: ControllerTransition,
+  now: Date
+) {
+  if (!transition.eventTransition) return false
+
   const hookId = controllerEventHookId(job, transition, now)
-  const [existing] = await db
+  const [existing] = await tx
     .select({ id: events.id })
     .from(events)
     .where(and(eq(events.tenantId, job.tenantId), eq(events.hookId, hookId)))
     .limit(1)
 
-  if (existing) return
+  if (existing) return false
 
-  await db.insert(events).values({
+  await tx.insert(events).values({
     tenantId: job.tenantId,
     hookId,
     source: 'controller',
-    severity: controllerEventSeverity(transition),
-    title: controllerEventTitle(job, transition),
-    description: controllerEventDescription(result, transition),
+    severity: controllerEventSeverity(transition.eventTransition),
+    title: controllerEventTitle(job, transition.eventTransition),
+    description: controllerEventDescription(result, transition.eventTransition),
     category: `controller.${job.type}`,
     tags: {
       controller: true,
       controllerJobId: job.id,
       controllerJobName: job.name,
-      transition,
+      transition: transition.eventTransition,
       outcome: result.outcome,
+      cooldownBucket: transition.cooldownBucket,
     },
     payload: {
       job: {
@@ -354,15 +448,17 @@ async function insertControllerEvent(
     receivedAt: now,
     status: 'open',
   })
+  return true
 }
 
 function controllerEventHookId(
   job: ClaimedControllerJob,
-  transition: 'alert' | 'error' | 'recovery',
+  transition: ControllerTransition,
   now: Date
 ) {
-  const periodStart = job.alertStartedAt ?? job.lastAlertedAt ?? now
-  return `controller-${job.id}-${transition}-${periodStart.toISOString().replace(/[^0-9A-Za-z]/g, '')}`
+  const periodStart = transition.alertStartedAt ?? job.alertStartedAt ?? job.lastAlertedAt ?? now
+  const bucket = transition.cooldownBucket ?? 0
+  return `controller-${job.id}-${transition.eventTransition}-${periodStart.toISOString().replace(/[^0-9A-Za-z]/g, '')}-${bucket}`
 }
 
 function controllerEventSeverity(transition: 'alert' | 'error' | 'recovery') {
@@ -387,6 +483,30 @@ function controllerEventDescription(
   if (transition === 'recovery') return 'Controller job returned to ok.'
   if (transition === 'error') return `Controller job failed: ${result.outcome}.`
   return `Controller job reported ${result.outcome}.`
+}
+
+function controllerNotificationMessage(
+  job: ClaimedControllerJob,
+  result: ControllerRunResult,
+  transition: 'alert' | 'error' | 'recovery'
+) {
+  const heading = transition === 'recovery'
+    ? 'ExceptAlert controller recovered'
+    : transition === 'error'
+      ? 'ExceptAlert controller error'
+      : 'ExceptAlert controller alert'
+
+  return [
+    heading,
+    `Job: ${job.name}`,
+    `Type: ${job.type}`,
+    `Outcome: ${result.outcome}`,
+    `Evaluated: ${result.evaluatedAt}`,
+  ].join('\n')
+}
+
+function cooldownBucketFor(alertStartedAt: Date, now: Date) {
+  return Math.max(0, Math.floor((now.getTime() - alertStartedAt.getTime()) / DEFAULT_REPEAT_COOLDOWN_MS))
 }
 
 function invalidConfigResult(now: Date, startedAt: number, message: string) {
@@ -415,15 +535,219 @@ function buildRunResult(input: {
   }
 }
 
-export function nextRunAfter(now: Date, cronExpr: string) {
-  const minuteField = cronExpr.trim().split(/\s+/)[0]
-  const intervalMatch = minuteField.match(/^\*\/(\d+)$/)
-  const intervalMinutes = intervalMatch ? Number(intervalMatch[1]) : 5
-  const safeIntervalMinutes = Number.isInteger(intervalMinutes) && intervalMinutes > 0
-    ? intervalMinutes
-    : 5
+export function nextRunAfter(now: Date, cronExpr: string, timezone = 'UTC') {
+  const schedule = parseCronSchedule(cronExpr)
+  const safeTimezone = isRuntimeTimeZone(timezone) ? timezone : 'UTC'
+  let cursor = new Date(Math.floor(now.getTime() / 60_000) * 60_000 + 60_000)
 
-  return new Date(now.getTime() + safeIntervalMinutes * 60_000)
+  for (let i = 0; i < MAX_CRON_SEARCH_MINUTES; i += 1) {
+    if (cronMatches(cursor, schedule, safeTimezone)) return cursor
+    cursor = new Date(cursor.getTime() + 60_000)
+  }
+
+  return new Date(now.getTime() + 5 * 60_000)
+}
+
+type CronSchedule = {
+  minute: Set<number>
+  hour: Set<number>
+  dayOfMonth: Set<number>
+  month: Set<number>
+  dayOfWeek: Set<number>
+  dayOfMonthRestricted: boolean
+  dayOfWeekRestricted: boolean
+}
+
+function parseCronSchedule(cronExpr: string): CronSchedule {
+  const fields = cronExpr.trim().split(/\s+/)
+  if (fields.length !== 5) throw new Error('Cron expression must have five fields')
+
+  return {
+    minute: parseCronField(fields[0], 0, 59),
+    hour: parseCronField(fields[1], 0, 23),
+    dayOfMonth: parseCronField(fields[2], 1, 31),
+    month: parseCronField(fields[3], 1, 12),
+    dayOfWeek: parseCronField(fields[4], 0, 7, true),
+    dayOfMonthRestricted: fields[2] !== '*',
+    dayOfWeekRestricted: fields[4] !== '*',
+  }
+}
+
+function parseCronField(field: string, min: number, max: number, normalizeSevenToZero = false) {
+  const values = new Set<number>()
+
+  for (const part of field.split(',')) {
+    const [rangePart, stepPart] = part.split('/')
+    const step = stepPart ? Number(stepPart) : 1
+    if (!rangePart || !Number.isInteger(step) || step <= 0) {
+      throw new Error('Invalid cron field')
+    }
+
+    let start: number
+    let end: number
+    if (rangePart === '*') {
+      start = min
+      end = max
+    } else if (rangePart.includes('-')) {
+      const [rawStart, rawEnd] = rangePart.split('-')
+      start = Number(rawStart)
+      end = Number(rawEnd)
+    } else {
+      start = Number(rangePart)
+      end = stepPart ? max : start
+    }
+
+    if (
+      !Number.isInteger(start) ||
+      !Number.isInteger(end) ||
+      start < min ||
+      end > max ||
+      start > end
+    ) {
+      throw new Error('Invalid cron range')
+    }
+
+    for (let value = start; value <= end; value += step) {
+      values.add(normalizeSevenToZero && value === 7 ? 0 : value)
+    }
+  }
+
+  return values
+}
+
+function cronMatches(date: Date, schedule: CronSchedule, timezone: string) {
+  const parts = zonedDateParts(date, timezone)
+  const dayOfWeekMatches = schedule.dayOfWeek.has(parts.dayOfWeek)
+  const dayOfMonthMatches = schedule.dayOfMonth.has(parts.day)
+  const dayMatches = schedule.dayOfMonthRestricted && schedule.dayOfWeekRestricted
+    ? dayOfMonthMatches || dayOfWeekMatches
+    : dayOfMonthMatches && dayOfWeekMatches
+
+  return schedule.minute.has(parts.minute) &&
+    schedule.hour.has(parts.hour) &&
+    schedule.month.has(parts.month) &&
+    dayMatches
+}
+
+function zonedDateParts(date: Date, timezone: string) {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    hourCycle: 'h23',
+  })
+  const parts = Object.fromEntries(
+    formatter.formatToParts(date)
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, Number(part.value)])
+  ) as Record<string, number>
+
+  const dayOfWeek = new Date(Date.UTC(parts.year, parts.month - 1, parts.day)).getUTCDay()
+  return {
+    year: parts.year,
+    month: parts.month,
+    day: parts.day,
+    hour: parts.hour,
+    minute: parts.minute,
+    dayOfWeek,
+  }
+}
+
+function isRuntimeTimeZone(value: string) {
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: value })
+    return true
+  } catch {
+    return false
+  }
+}
+
+function validateHealthPingUrl(value: string) {
+  const parsed = new URL(value)
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('Health ping URL must use HTTP or HTTPS')
+  }
+  if (parsed.username || parsed.password) {
+    throw new Error('Health ping URL must not include credentials')
+  }
+  return parsed
+}
+
+async function assertPublicHealthPingTarget(hostname: string) {
+  const normalizedHostname = normalizeUrlHostname(hostname)
+  const literalVersion = net.isIP(normalizedHostname)
+  if (literalVersion) {
+    if (isBlockedIp(normalizedHostname, literalVersion)) {
+      throw new Error('Health ping URL resolves to a prohibited address')
+    }
+    return
+  }
+
+  const addresses = await lookup(normalizedHostname, { all: true, verbatim: false })
+  if (addresses.length === 0) {
+    throw new Error('Health ping hostname did not resolve')
+  }
+
+  for (const address of addresses) {
+    if (isBlockedIp(address.address, address.family)) {
+      throw new Error('Health ping URL resolves to a prohibited address')
+    }
+  }
+}
+
+function isBlockedIp(address: string, family: number) {
+  if (family === 4) return isBlockedIpv4(address)
+  if (family === 6) return isBlockedIpv6(address)
+  return true
+}
+
+function isBlockedIpv4(address: string) {
+  const parts = address.split('.').map((part) => Number(part))
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+    return true
+  }
+
+  const [a, b] = parts
+  return a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 198 && (b === 18 || b === 19)) ||
+    a >= 224
+}
+
+function isBlockedIpv6(address: string) {
+  const normalized = address.toLowerCase()
+  if (normalized.startsWith('::ffff:')) {
+    const embeddedIpv4 = normalized.slice('::ffff:'.length)
+    if (net.isIP(embeddedIpv4) === 4) return isBlockedIpv4(embeddedIpv4)
+  }
+
+  return normalized === '::' ||
+    normalized === '::1' ||
+    normalized.startsWith('fc') ||
+    normalized.startsWith('fd') ||
+    normalized.startsWith('fe8') ||
+    normalized.startsWith('fe9') ||
+    normalized.startsWith('fea') ||
+    normalized.startsWith('feb') ||
+    normalized.startsWith('ff')
+}
+
+function redactUrl(url: URL) {
+  return `${url.protocol}//${url.host}${url.pathname}`
+}
+
+function normalizeUrlHostname(hostname: string) {
+  return hostname.startsWith('[') && hostname.endsWith(']')
+    ? hostname.slice(1, -1)
+    : hostname
 }
 
 function isControllerJobType(type: string): type is ControllerJobType {

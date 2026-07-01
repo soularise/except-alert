@@ -92,8 +92,9 @@ test('controller job settings UI exposes plan-aware management', () => {
   assert.match(page, /Deviation/)
 })
 
-test('controller scheduler skeleton claims due jobs and records provider evaluations', () => {
+test('controller scheduler claims due jobs and records provider evaluations', () => {
   const controller = read('src/lib/controller.ts')
+  const eventIdempotencyMigration = read('drizzle/migrations/0010_controller_event_idempotency.sql')
 
   assert.match(controller, /export async function runControllerScheduler/)
   assert.match(controller, /export async function claimDueControllerJobs/)
@@ -104,30 +105,45 @@ test('controller scheduler skeleton claims due jobs and records provider evaluat
   assert.match(controller, /finishControllerJob/)
   assert.match(controller, /lastStatus: result\.status/)
   assert.match(controller, /lastResult: result/)
-  assert.match(controller, /nextRunAfter\(now, job\.cronExpr\)/)
+  assert.match(controller, /nextRunAfter\(now, job\.cronExpr, job\.timezone\)/)
   assert.match(controller, /evaluateDeadLetter/)
   assert.match(controller, /evaluateCronDeadline/)
+  assert.match(controller, /evaluateHealthPing/)
   assert.match(controller, /eq\(events\.tenantId, tenantId\)/)
   assert.match(controller, /eq\(events\.source, providerId\)/)
-  assert.match(controller, /health_ping_deferred/)
   assert.match(controller, /deviation_deferred/)
+  assert.match(controller, /redirect: 'manual'/)
+  assert.match(controller, /assertPublicHealthPingTarget/)
+  assert.match(eventIdempotencyMigration, /events_controller_hook_unique/)
+  assert.match(eventIdempotencyMigration, /WHERE source = 'controller'/)
 })
 
-test('controller scheduler records dashboard events on state transitions', () => {
+test('controller scheduler records and delivers cooldown-aware state transitions', () => {
   const controller = read('src/lib/controller.ts')
+  const notifications = read('src/lib/notifications.ts')
+  const baselines = read('src/lib/baselines.ts')
 
   assert.match(controller, /recordControllerTransition/)
   assert.match(controller, /insertControllerEvent/)
   assert.match(controller, /source: 'controller'/)
   assert.match(controller, /category: `controller\.\$\{job\.type\}`/)
   assert.match(controller, /controllerEventHookId/)
-  assert.match(controller, /transition: 'alert' \| 'error' \| 'recovery'/)
+  assert.match(controller, /eventTransition: 'alert' \| 'error' \| 'recovery' \| null/)
   assert.match(controller, /previousStatus !== 'alert'/)
   assert.match(controller, /previousStatus !== 'error'/)
-  assert.match(controller, /previousStatus === 'alert' \|\| previousStatus === 'error'/)
+  assert.match(controller, /DEFAULT_REPEAT_COOLDOWN_MS/)
+  assert.match(controller, /cooldownExpired/)
+  assert.match(controller, /cooldownBucketFor/)
+  assert.match(controller, /db\.transaction/)
+  assert.match(controller, /sendTenantAlertNotifications/)
+  assert.match(controller, /counts\.skipped \+= 1/)
   assert.match(controller, /alertStartedAt: null/)
-  assert.match(controller, /lastAlertedAt: now/)
+  assert.match(controller, /lastAlertedAt: shouldNotify \? now : job\.lastAlertedAt/)
   assert.match(controller, /controllerJobId: job\.id/)
+  assert.match(notifications, /canUseChannel\(tenant\.plan, 'slack'\)/)
+  assert.match(notifications, /sendSlackAlert/)
+  assert.match(notifications, /sendTelegramAlert/)
+  assert.match(baselines, /sendTenantAlertNotifications/)
 })
 
 test('internal controller route requires a timing-safe secret and runs scheduler counts', () => {

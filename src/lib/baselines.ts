@@ -1,8 +1,7 @@
-import { and, count, eq, gte, inArray } from 'drizzle-orm'
+import { and, count, eq, gte } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { baselines, events, settings } from '@/lib/db/schema'
-import { sendSlackAlert } from '@/lib/slack'
-import { sendTelegramAlert } from '@/lib/telegram'
+import { baselines, events } from '@/lib/db/schema'
+import { sendTenantAlertNotifications } from '@/lib/notifications'
 
 export async function evaluateBaselines(tenantId: string): Promise<void> {
   const allBaselines = await db
@@ -10,20 +9,6 @@ export async function evaluateBaselines(tenantId: string): Promise<void> {
     .from(baselines)
     .where(eq(baselines.tenantId, tenantId))
   if (allBaselines.length === 0) return
-
-  const settingRows = await db
-    .select()
-    .from(settings)
-    .where(
-      and(
-        eq(settings.tenantId, tenantId),
-        inArray(settings.key, ['slack_webhook_url', 'telegram_bot_token', 'telegram_chat_id'])
-      )
-    )
-  const settingValues = Object.fromEntries(settingRows.map((r) => [r.key, r.value]))
-  const slackUrl = settingValues['slack_webhook_url'] ?? null
-  const telegramToken = settingValues['telegram_bot_token'] ?? null
-  const telegramChatId = settingValues['telegram_chat_id'] ?? null
 
   const now = new Date()
 
@@ -57,27 +42,11 @@ export async function evaluateBaselines(tenantId: string): Promise<void> {
       `Actual: ${eventCount} events in the last ${baseline.windowMinutes} min`,
     ].join('\n')
 
-    let anyFailed = false
-
-    if (slackUrl) {
-      try {
-        await sendSlackAlert(slackUrl, message)
-      } catch (err) {
-        console.error('[baselines] Slack delivery failed:', err)
-        anyFailed = true
-      }
+    const delivery = await sendTenantAlertNotifications(tenantId, message)
+    if (delivery.failed.length > 0) {
+      console.error('[baselines] Alert delivery failed:', delivery.failed)
+      continue
     }
-
-    if (telegramToken && telegramChatId) {
-      try {
-        await sendTelegramAlert(telegramToken, telegramChatId, message)
-      } catch (err) {
-        console.error('[baselines] Telegram delivery failed:', err)
-        anyFailed = true
-      }
-    }
-
-    if (anyFailed) continue
 
     await db
       .update(baselines)
