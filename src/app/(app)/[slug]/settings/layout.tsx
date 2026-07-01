@@ -13,6 +13,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const tabs = [
     { label: 'Notifications', href: base },
     { label: 'Sources',       href: `${base}/providers` },
+    { label: 'Controllers',    href: `${base}/controller-jobs` },
     { label: 'Team',          href: `${base}/team` },
     { label: 'Account',       href: `${base}/account` },
   ]

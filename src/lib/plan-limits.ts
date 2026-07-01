@@ -59,3 +59,8 @@ export function canConfigureProvider(plan: string | null | undefined, configured
   const limit = limitsFor(plan).providers
   return limit === null || configuredProviders < limit
 }
+
+export function canCreateControllerJob(plan: string | null | undefined, configuredJobs: number) {
+  const limit = limitsFor(plan).controllerJobs
+  return limit === null || configuredJobs < limit
+}

@@ -1,6 +1,7 @@
 import {
   bigserial,
   boolean,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -10,6 +11,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
 
 // Helper matching the existing pattern in the codebase
 const timestamptz = (name: string) =>
@@ -188,6 +190,33 @@ export const baselines = pgTable('baselines', {
   lastAlertedAt: timestamptz('last_alerted_at'),
   createdAt:     timestamptz('created_at').notNull().defaultNow(),
 })
+
+export const controllerJobs = pgTable(
+  'controller_jobs',
+  {
+    id:              uuid('id').primaryKey().defaultRandom(),
+    tenantId:        uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    name:            text('name').notNull(),
+    type:            text('type').notNull(),
+    config:          jsonb('config').notNull().default({}),
+    cronExpr:        text('cron_expr').notNull().default('*/5 * * * *'),
+    timezone:        text('timezone').notNull().default('UTC'),
+    enabled:         boolean('enabled').notNull().default(true),
+    nextRunAt:       timestamptz('next_run_at').notNull().defaultNow(),
+    leaseExpiresAt:  timestamptz('lease_expires_at'),
+    lastRunAt:       timestamptz('last_run_at'),
+    lastStatus:      text('last_status').notNull().default('pending'),
+    lastResult:      jsonb('last_result'),
+    lastAlertedAt:   timestamptz('last_alerted_at'),
+    alertStartedAt:  timestamptz('alert_started_at'),
+    createdAt:       timestamptz('created_at').notNull().defaultNow(),
+    updatedAt:       timestamptz('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('controller_jobs_tenant_name_unique').on(t.tenantId, t.name),
+    index('idx_controller_jobs_due').on(t.nextRunAt).where(sql`${t.enabled} = true`),
+  ]
+)
 
 export const settings = pgTable(
   'settings',
