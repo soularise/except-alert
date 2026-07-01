@@ -79,6 +79,8 @@ DATABASE_URL=postgres://relay:relay@localhost:5432/relay npm run dev
 | `EXCEPTALERT_ADMIN_EMAILS` | Yes | Comma-separated list of admin email addresses |
 | `EXCEPTALERT_APP_URL` | Yes | Public URL used in outbound emails and links |
 | `RELAY_URL` | Required in production | Public URL of the Relay service. Local Docker Compose defaults to `http://relay:3800`; hosted webhooks should use the public HTTPS Relay origin. |
+| `CONTROLLER_SECRET` | Required for controller scheduler | Shared secret required by `POST /api/internal/controller` and `npm run controller:run`. Use a long random value in production. |
+| `CONTROLLER_BASE_URL` | No | Base URL used by `npm run controller:run`. Defaults to `EXCEPTALERT_APP_URL`, then `BETTER_AUTH_URL`, then `http://localhost:3000`. |
 | `EXCEPTALERT_PASSWORD_RESET_EVENT_TENANT_ID` | No | Tenant ID used for password reset event routing |
 | `EXCEPTALERT_PASSWORD_RESET_EVENT_TENANT_SLUG` | No | Tenant slug used for password reset event routing |
 
@@ -112,6 +114,37 @@ Deployment checklist for schema changes:
 3. Apply the new ExceptAlert SQL file with `npm run db:apply -- <migration-file>`.
 4. Restart Relay, then restart ExceptAlert.
 5. Open the affected app route and check server logs for migration-related errors.
+
+## Controller Scheduler
+
+Controller jobs are evaluated by `POST /api/internal/controller`. The route requires the `x-controller-secret` header to match `CONTROLLER_SECRET` and returns scheduler counts:
+
+```json
+{"ok":true,"counts":{"claimed":1,"evaluated":1,"alerted":1,"errored":0,"skipped":0}}
+```
+
+For local or production smoke checks, use:
+
+```bash
+CONTROLLER_SECRET=local-controller-secret npm run controller:run
+```
+
+The script reads `.env`, `.env.local`, and `.env.production.local`, then posts to `/api/internal/controller` on `CONTROLLER_BASE_URL`. If `CONTROLLER_BASE_URL` is not set, it falls back to `EXCEPTALERT_APP_URL`, then `BETTER_AUTH_URL`, then `http://localhost:3000`.
+
+Production schedulers can run the same command every minute, or call the endpoint directly:
+
+```bash
+curl -X POST \
+  -H "x-controller-secret: $CONTROLLER_SECRET" \
+  "$EXCEPTALERT_APP_URL/api/internal/controller"
+```
+
+Expected operator checks:
+
+1. A successful run returns HTTP 200 and a JSON `counts` object.
+2. Missing `CONTROLLER_SECRET` returns HTTP 503 from the app route.
+3. Wrong or missing `x-controller-secret` returns HTTP 404.
+4. Job state is visible in Settings -> Controllers through `last_status`, `last_run_at`, `next_run_at`, and `last_result`.
 
 ## Admin Provisioning
 

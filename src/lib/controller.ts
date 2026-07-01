@@ -127,7 +127,11 @@ export async function claimDueControllerJobs({
       controller_jobs.alert_started_at AS "alertStartedAt"
   `)
 
-  return Array.from(result as unknown as ClaimedControllerJob[])
+  return Array.from(result as unknown as ClaimedControllerJob[]).map((job) => ({
+    ...job,
+    lastAlertedAt: dateFromDb(job.lastAlertedAt),
+    alertStartedAt: dateFromDb(job.alertStartedAt),
+  }))
 }
 
 async function evaluateControllerJob(
@@ -427,4 +431,9 @@ function isControllerJobType(type: string): type is ControllerJobType {
     type === 'dead_letter' ||
     type === 'cron_deadline' ||
     type === 'deviation'
+}
+
+function dateFromDb(value: Date | string | null) {
+  if (value === null || value instanceof Date) return value
+  return new Date(value)
 }

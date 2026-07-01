@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --test tests/*.test.mjs",
+    "controller:run": "node scripts/run-controller-scheduler.mjs",
     "db:apply": "node scripts/apply-sql-migrations.mjs"
   },
   "dependencies": {

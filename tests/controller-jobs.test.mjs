@@ -98,6 +98,8 @@ test('controller scheduler skeleton claims due jobs and records provider evaluat
   assert.match(controller, /export async function runControllerScheduler/)
   assert.match(controller, /export async function claimDueControllerJobs/)
   assert.match(controller, /FOR UPDATE SKIP LOCKED/)
+  assert.match(controller, /dateFromDb\(job\.lastAlertedAt\)/)
+  assert.match(controller, /dateFromDb\(job\.alertStartedAt\)/)
   assert.match(controller, /lease_expires_at/)
   assert.match(controller, /finishControllerJob/)
   assert.match(controller, /lastStatus: result\.status/)
@@ -139,4 +141,24 @@ test('internal controller route requires a timing-safe secret and runs scheduler
   assert.match(route, /NextResponse\.json\(\{ ok: true, counts \}\)/)
   assert.match(route, /status: 404/)
   assert.match(route, /status: 503/)
+})
+
+test('controller scheduler can be triggered by the operations script', () => {
+  const packageJson = read('package.json')
+  const script = read('scripts/run-controller-scheduler.mjs')
+  const readme = read('README.md')
+
+  assert.match(packageJson, /"controller:run": "node scripts\/run-controller-scheduler\.mjs"/)
+  assert.match(script, /CONTROLLER_SECRET is not set/)
+  assert.match(script, /CONTROLLER_BASE_URL/)
+  assert.match(script, /EXCEPTALERT_APP_URL/)
+  assert.match(script, /BETTER_AUTH_URL/)
+  assert.match(script, /new URL\('\/api\/internal\/controller', baseUrl\)/)
+  assert.match(script, /'x-controller-secret': process\.env\.CONTROLLER_SECRET/)
+  assert.doesNotMatch(script, /console\.log\(process\.env\.CONTROLLER_SECRET/)
+
+  assert.match(readme, /CONTROLLER_SECRET/)
+  assert.match(readme, /CONTROLLER_BASE_URL/)
+  assert.match(readme, /npm run controller:run/)
+  assert.match(readme, /POST \/api\/internal\/controller/)
 })
