@@ -1,17 +1,23 @@
 import { auth } from './auth'
 
-const DEFAULT_PLATFORM_ADMIN_EMAILS = ['hello@exceptalert.com', 'droidsafari@gmail.com']
+const DEFAULT_PLATFORM_ADMIN_EMAILS = [
+  'hello@exceptalert.com',
+  'droidsafari@gmail.com',
+  'soularise@gmail.com',
+]
 
 function configuredPlatformAdminEmails() {
   const configured =
     process.env.EXCEPTALERT_ADMIN_EMAILS ??
     process.env.EXCEPTALERT_ADMIN_EMAIL ??
-    DEFAULT_PLATFORM_ADMIN_EMAILS.join(',')
+    ''
 
-  return configured
+  const configuredEmails = configured
     .split(',')
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean)
+
+  return Array.from(new Set([...DEFAULT_PLATFORM_ADMIN_EMAILS, ...configuredEmails]))
 }
 
 export function isPlatformAdminEmail(email: string | null | undefined) {

@@ -19,6 +19,7 @@ test('admin provisioning is discoverable to configured admins', () => {
   const admin = read('src/lib/admin.ts')
   assert.match(admin, /hello@exceptalert\.com/)
   assert.match(admin, /droidsafari@gmail\.com/)
+  assert.match(admin, /soularise@gmail\.com/)
   assert.match(admin, /isPlatformAdminEmail/)
 
   const sidebar = read('src/components/AppSidebar.tsx')
