@@ -111,6 +111,23 @@ test('controller scheduler skeleton claims due jobs and records provider evaluat
   assert.match(controller, /deviation_deferred/)
 })
 
+test('controller scheduler records dashboard events on state transitions', () => {
+  const controller = read('src/lib/controller.ts')
+
+  assert.match(controller, /recordControllerTransition/)
+  assert.match(controller, /insertControllerEvent/)
+  assert.match(controller, /source: 'controller'/)
+  assert.match(controller, /category: `controller\.\$\{job\.type\}`/)
+  assert.match(controller, /controllerEventHookId/)
+  assert.match(controller, /transition: 'alert' \| 'error' \| 'recovery'/)
+  assert.match(controller, /previousStatus !== 'alert'/)
+  assert.match(controller, /previousStatus !== 'error'/)
+  assert.match(controller, /previousStatus === 'alert' \|\| previousStatus === 'error'/)
+  assert.match(controller, /alertStartedAt: null/)
+  assert.match(controller, /lastAlertedAt: now/)
+  assert.match(controller, /controllerJobId: job\.id/)
+})
+
 test('internal controller route requires a timing-safe secret and runs scheduler counts', () => {
   const route = read('src/app/api/internal/controller/route.ts')
 

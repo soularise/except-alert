@@ -26,6 +26,9 @@ type ClaimedControllerJob = {
   config: unknown
   cronExpr: string
   timezone: string
+  lastStatus: string
+  lastAlertedAt: Date | null
+  alertStartedAt: Date | null
 }
 
 type SchedulerOptions = {
@@ -77,7 +80,8 @@ export async function runControllerScheduler(options: SchedulerOptions = {}) {
       })
     }
 
-    await finishControllerJob(job, result, now)
+    const transition = await recordControllerTransition(job, result, now)
+    await finishControllerJob(job, result, transition, now)
     counts.evaluated += 1
     if (result.status === 'alert') counts.alerted += 1
     if (result.status === 'error') counts.errored += 1
@@ -115,7 +119,10 @@ export async function claimDueControllerJobs({
       controller_jobs.type,
       controller_jobs.config,
       controller_jobs.cron_expr AS "cronExpr",
-      controller_jobs.timezone
+      controller_jobs.timezone,
+      controller_jobs.last_status AS "lastStatus",
+      controller_jobs.last_alerted_at AS "lastAlertedAt",
+      controller_jobs.alert_started_at AS "alertStartedAt"
   `)
 
   return Array.from(result as unknown as ClaimedControllerJob[])
@@ -234,6 +241,7 @@ async function countProviderEvents(tenantId: string, providerId: string, since: 
 async function finishControllerJob(
   job: ClaimedControllerJob,
   result: ControllerRunResult,
+  transition: ControllerTransition,
   now: Date
 ) {
   await db
@@ -243,10 +251,136 @@ async function finishControllerJob(
       lastRunAt: now,
       lastStatus: result.status,
       lastResult: result,
+      lastAlertedAt: transition.lastAlertedAt,
+      alertStartedAt: transition.alertStartedAt,
       nextRunAt: nextRunAfter(now, job.cronExpr),
       updatedAt: now,
     })
     .where(eq(controllerJobs.id, job.id))
+}
+
+type ControllerTransition = {
+  alertStartedAt: Date | null
+  lastAlertedAt: Date | null
+}
+
+async function recordControllerTransition(
+  job: ClaimedControllerJob,
+  result: ControllerRunResult,
+  now: Date
+): Promise<ControllerTransition> {
+  const previousStatus = job.lastStatus
+
+  if (result.status === 'ok') {
+    if (previousStatus === 'alert' || previousStatus === 'error') {
+      await insertControllerEvent(job, result, 'recovery', now)
+    }
+    return { alertStartedAt: null, lastAlertedAt: job.lastAlertedAt }
+  }
+
+  if (result.status === 'alert') {
+    if (previousStatus !== 'alert') {
+      await insertControllerEvent(job, result, 'alert', now)
+      return {
+        alertStartedAt: job.alertStartedAt ?? now,
+        lastAlertedAt: now,
+      }
+    }
+    return {
+      alertStartedAt: job.alertStartedAt ?? now,
+      lastAlertedAt: job.lastAlertedAt,
+    }
+  }
+
+  if (previousStatus !== 'error') {
+    await insertControllerEvent(job, result, 'error', now)
+    return {
+      alertStartedAt: job.alertStartedAt ?? now,
+      lastAlertedAt: now,
+    }
+  }
+
+  return {
+    alertStartedAt: job.alertStartedAt ?? now,
+    lastAlertedAt: job.lastAlertedAt,
+  }
+}
+
+async function insertControllerEvent(
+  job: ClaimedControllerJob,
+  result: ControllerRunResult,
+  transition: 'alert' | 'error' | 'recovery',
+  now: Date
+) {
+  const hookId = controllerEventHookId(job, transition, now)
+  const [existing] = await db
+    .select({ id: events.id })
+    .from(events)
+    .where(and(eq(events.tenantId, job.tenantId), eq(events.hookId, hookId)))
+    .limit(1)
+
+  if (existing) return
+
+  await db.insert(events).values({
+    tenantId: job.tenantId,
+    hookId,
+    source: 'controller',
+    severity: controllerEventSeverity(transition),
+    title: controllerEventTitle(job, transition),
+    description: controllerEventDescription(result, transition),
+    category: `controller.${job.type}`,
+    tags: {
+      controller: true,
+      controllerJobId: job.id,
+      controllerJobName: job.name,
+      transition,
+      outcome: result.outcome,
+    },
+    payload: {
+      job: {
+        id: job.id,
+        name: job.name,
+        type: job.type,
+      },
+      result,
+    },
+    occurredAt: now,
+    receivedAt: now,
+    status: 'open',
+  })
+}
+
+function controllerEventHookId(
+  job: ClaimedControllerJob,
+  transition: 'alert' | 'error' | 'recovery',
+  now: Date
+) {
+  const periodStart = job.alertStartedAt ?? job.lastAlertedAt ?? now
+  return `controller-${job.id}-${transition}-${periodStart.toISOString().replace(/[^0-9A-Za-z]/g, '')}`
+}
+
+function controllerEventSeverity(transition: 'alert' | 'error' | 'recovery') {
+  if (transition === 'error') return 'error'
+  if (transition === 'recovery') return 'info'
+  return 'warning'
+}
+
+function controllerEventTitle(
+  job: ClaimedControllerJob,
+  transition: 'alert' | 'error' | 'recovery'
+) {
+  if (transition === 'recovery') return `${job.name} recovered`
+  if (transition === 'error') return `${job.name} controller error`
+  return `${job.name} needs attention`
+}
+
+function controllerEventDescription(
+  result: ControllerRunResult,
+  transition: 'alert' | 'error' | 'recovery'
+) {
+  if (transition === 'recovery') return 'Controller job returned to ok.'
+  if (transition === 'error') return `Controller job failed: ${result.outcome}.`
+  return `Controller job reported ${result.outcome}.`
 }
 
 function invalidConfigResult(now: Date, startedAt: number, message: string) {
