@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { and, count, eq, gt, isNull } from 'drizzle-orm'
+import { and, count, eq, gt, isNull, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { tenantInvitations, tenantMemberships } from '@/lib/db/schema'
 import { requireTenantAccess } from '@/lib/auth-guard'
-import { createInvitation } from '@/lib/tenancy'
 import { canInviteMember, limitsFor } from '@/lib/plan-limits'
 
 const VALID_INVITE_ROLES = new Set(['admin', 'member', 'viewer'])
@@ -33,41 +32,56 @@ export async function POST(
   }
 
   try {
-    const [memberResult] = await db
-      .select({ value: count() })
-      .from(tenantMemberships)
-      .where(eq(tenantMemberships.tenantId, access.tenant.id))
+    const invitation = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${access.tenant.id}), 1)`)
 
-    const [pendingResult] = await db
-      .select({ value: count() })
-      .from(tenantInvitations)
-      .where(
-        and(
-          eq(tenantInvitations.tenantId, access.tenant.id),
-          isNull(tenantInvitations.acceptedAt),
-          gt(tenantInvitations.expiresAt, new Date())
+      const [memberResult] = await tx
+        .select({ value: count() })
+        .from(tenantMemberships)
+        .where(eq(tenantMemberships.tenantId, access.tenant.id))
+
+      const [pendingResult] = await tx
+        .select({ value: count() })
+        .from(tenantInvitations)
+        .where(
+          and(
+            eq(tenantInvitations.tenantId, access.tenant.id),
+            isNull(tenantInvitations.acceptedAt),
+            gt(tenantInvitations.expiresAt, new Date())
+          )
         )
-      )
 
-    const occupiedSeats = (memberResult?.value ?? 0) + (pendingResult?.value ?? 0)
-    if (!canInviteMember(access.tenant.plan, occupiedSeats)) {
+      const occupiedSeats = (memberResult?.value ?? 0) + (pendingResult?.value ?? 0)
+      if (!canInviteMember(access.tenant.plan, occupiedSeats)) {
+        throw new Error('member_limit')
+      }
+
+      const [createdInvitation] = await tx
+        .insert(tenantInvitations)
+        .values({
+          tenantId: access.tenant.id,
+          invitedBy: access.user.id,
+          email: email.trim().toLowerCase(),
+          role: role as 'admin' | 'member' | 'viewer',
+          token: crypto.randomUUID(),
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        })
+        .returning()
+
+      return createdInvitation
+    })
+
+    const url = new URL(request.url)
+    const inviteUrl = `${url.origin}/invite/${invitation.token}`
+    return NextResponse.json({ invitation, inviteUrl }, { status: 201 })
+  } catch (err) {
+    if (err instanceof Error && err.message === 'member_limit') {
       const limit = limitsFor(access.tenant.plan).members
       return NextResponse.json(
         { error: `Your current plan allows ${limit} organization member${limit === 1 ? '' : 's'}.` },
         { status: 403 }
       )
     }
-
-    const invitation = await createInvitation(
-      access.tenant.id,
-      access.user.id,
-      email.trim().toLowerCase(),
-      role as 'admin' | 'member' | 'viewer'
-    )
-    const url = new URL(request.url)
-    const inviteUrl = `${url.origin}/invite/${invitation.token}`
-    return NextResponse.json({ invitation, inviteUrl }, { status: 201 })
-  } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

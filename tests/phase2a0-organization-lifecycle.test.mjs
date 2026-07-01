@@ -45,6 +45,7 @@ test('providers and invitations enforce plan limits server-side', () => {
   assert.match(providerRoute, /canConfigureProvider\(access\.tenant\.plan, configuredProviders\)/)
   assert.match(providerRoute, /pg_advisory_xact_lock/)
   assert.match(inviteRoute, /canInviteMember\(access\.tenant\.plan, occupiedSeats\)/)
+  assert.match(inviteRoute, /pg_advisory_xact_lock/)
   assert.match(inviteRoute, /isNull\(tenantInvitations\.acceptedAt\)/)
 })
 

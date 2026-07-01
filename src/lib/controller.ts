@@ -881,6 +881,8 @@ function isBlockedIpv6(address: string) {
   if (normalized.startsWith('::ffff:')) {
     const embeddedIpv4 = normalized.slice('::ffff:'.length)
     if (net.isIP(embeddedIpv4) === 4) return isBlockedIpv4(embeddedIpv4)
+    const mappedIpv4 = ipv4FromIpv6Hextets(embeddedIpv4)
+    return mappedIpv4 ? isBlockedIpv4(mappedIpv4) : true
   }
 
   return normalized === '::' ||
@@ -892,6 +894,24 @@ function isBlockedIpv6(address: string) {
     normalized.startsWith('fea') ||
     normalized.startsWith('feb') ||
     normalized.startsWith('ff')
+}
+
+function ipv4FromIpv6Hextets(value: string) {
+  const parts = value.split(':')
+  if (parts.length !== 2) return null
+  if (parts.some((part) => !/^[0-9a-f]{1,4}$/.test(part))) return null
+
+  const words = parts.map((part) => Number.parseInt(part, 16))
+  if (words.some((word) => !Number.isInteger(word) || word < 0 || word > 0xffff)) {
+    return null
+  }
+
+  return [
+    words[0] >> 8,
+    words[0] & 0xff,
+    words[1] >> 8,
+    words[1] & 0xff,
+  ].join('.')
 }
 
 function redactUrl(url: URL) {
