@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Activity, Clock, Pause, Play, RotateCw, Trash2 } from 'lucide-react'
+import { Activity, Clock, Pencil, Pause, Play, RotateCw, Trash2, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -94,6 +94,7 @@ export default function ControllerJobsPage() {
   const [jobs, setJobs] = useState<ControllerJob[]>([])
   const [providers, setProviders] = useState<ProviderItem[]>([])
   const [draft, setDraft] = useState<JobDraft>(DEFAULT_DRAFT)
+  const [editingJobId, setEditingJobId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [runningJobId, setRunningJobId] = useState<string | null>(null)
@@ -104,6 +105,7 @@ export default function ControllerJobsPage() {
   const controllerLimit = limitsFor(tenant.plan).controllerJobs
   const atControllerLimit = controllerLimit !== null && jobs.length >= controllerLimit
   const canCreate = canManage && !atControllerLimit && controllerLimit !== 0
+  const canShowForm = canCreate || Boolean(editingJobId)
   const configuredProviders = useMemo(
     () => providers.filter((provider) => provider.configured),
     [providers]
@@ -140,13 +142,13 @@ export default function ControllerJobsPage() {
     setDraft((current) => ({ ...current, [key]: value }))
   }
 
-  function buildPayload() {
+  function buildPayload(enabled = true) {
     const base = {
       name: draft.name,
       type: draft.type,
       cronExpr: draft.cronExpr,
       timezone: draft.timezone,
-      enabled: true,
+      enabled,
     }
 
     if (draft.type === 'health_ping') {
@@ -192,26 +194,47 @@ export default function ControllerJobsPage() {
     }
   }
 
-  async function createJob(event: React.FormEvent) {
+  async function saveJob(event: React.FormEvent) {
     event.preventDefault()
     setSaving(true)
     setFormError(null)
 
     try {
-      const res = await fetch(`/api/${tenant.slug}/controller-jobs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildPayload()),
-      })
+      const editingJob = editingJobId ? jobs.find((job) => job.id === editingJobId) : null
+      const res = await fetch(
+        editingJob
+          ? `/api/${tenant.slug}/controller-jobs/${editingJob.id}`
+          : `/api/${tenant.slug}/controller-jobs`,
+        {
+          method: editingJob ? 'PATCH' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(buildPayload(editingJob?.enabled ?? true)),
+        }
+      )
       const data = await res.json() as { error?: string }
-      if (!res.ok) throw new Error(data.error ?? 'Failed to create controller job')
-      setDraft(DEFAULT_DRAFT)
+      if (!res.ok) {
+        throw new Error(data.error ?? (editingJob ? 'Failed to update controller job' : 'Failed to create controller job'))
+      }
+      resetForm()
       await loadControllerState()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to create controller job')
+      setFormError(err instanceof Error ? err.message : 'Failed to save controller job')
     } finally {
       setSaving(false)
     }
+  }
+
+  function editJob(job: ControllerJob) {
+    setDraft(jobToDraft(job))
+    setEditingJobId(job.id)
+    setFormError(null)
+    setError(null)
+  }
+
+  function resetForm() {
+    setDraft(DEFAULT_DRAFT)
+    setEditingJobId(null)
+    setFormError(null)
   }
 
   async function toggleJob(job: ControllerJob) {
@@ -222,6 +245,7 @@ export default function ControllerJobsPage() {
         body: JSON.stringify({ enabled: !job.enabled }),
       })
       if (!res.ok) throw new Error('Failed to update controller job')
+      if (editingJobId === job.id) resetForm()
       await loadControllerState()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update controller job')
@@ -254,6 +278,7 @@ export default function ControllerJobsPage() {
         method: 'DELETE',
       })
       if (!res.ok) throw new Error('Failed to delete controller job')
+      if (editingJobId === job.id) resetForm()
       await loadControllerState()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete controller job')
@@ -305,6 +330,8 @@ export default function ControllerJobsPage() {
                   <TableHead>Type</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Schedule</TableHead>
+                  <TableHead>Last run</TableHead>
+                  <TableHead>Result</TableHead>
                   <TableHead>Next run</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -320,7 +347,16 @@ export default function ControllerJobsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <code className="text-xs text-muted-foreground">{job.cronExpr}</code>
+                      <div className="grid gap-1">
+                        <code className="text-xs text-muted-foreground">{job.cronExpr}</code>
+                        <span className="text-xs text-muted-foreground">{job.timezone}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatDate(job.lastRunAt)}
+                    </TableCell>
+                    <TableCell className="max-w-[180px] text-sm text-muted-foreground">
+                      {formatResult(job.lastResult)}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {job.enabled ? formatDate(job.nextRunAt) : '-'}
@@ -337,6 +373,15 @@ export default function ControllerJobsPage() {
                           >
                             <RotateCw className="h-4 w-4" />
                             {runningJobId === job.id ? 'Running...' : 'Run now'}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => editJob(job)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                            Edit
                           </Button>
                           <Button
                             type="button"
@@ -389,15 +434,25 @@ export default function ControllerJobsPage() {
         </div>
       )}
 
-      {canCreate && (
+      {canShowForm && (
         <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-medium text-foreground">New job</h3>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-medium text-foreground">
+                {editingJobId ? 'Edit job' : 'New job'}
+              </h3>
+            </div>
+            {editingJobId && (
+              <Button type="button" variant="ghost" size="sm" onClick={resetForm}>
+                <X className="h-4 w-4" />
+                Cancel
+              </Button>
+            )}
           </div>
 
           <form
-            onSubmit={createJob}
+            onSubmit={saveJob}
             className="grid gap-4 rounded-md border bg-card p-4 sm:grid-cols-2"
           >
             <div className="grid gap-2">
@@ -469,7 +524,7 @@ export default function ControllerJobsPage() {
                 type="submit"
                 disabled={saving || (draft.type !== 'health_ping' && !draft.providerId)}
               >
-                {saving ? 'Creating...' : 'Create job'}
+                {saving ? 'Saving...' : editingJobId ? 'Save job' : 'Create job'}
               </Button>
             </div>
           </form>
@@ -639,4 +694,71 @@ function formatDate(value: string | null) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '-'
   return date.toLocaleString()
+}
+
+function formatResult(result: Record<string, unknown> | null) {
+  if (!result) return '-'
+  const outcome = typeof result.outcome === 'string' ? result.outcome : 'unknown'
+  const durationMs = typeof result.durationMs === 'number' ? `${result.durationMs}ms` : null
+  return durationMs ? `${outcome} (${durationMs})` : outcome
+}
+
+function jobToDraft(job: ControllerJob): JobDraft {
+  const config = job.config ?? {}
+  const draft = {
+    ...DEFAULT_DRAFT,
+    name: job.name,
+    type: job.type,
+    cronExpr: job.cronExpr,
+    timezone: job.timezone,
+  }
+
+  if (job.type === 'health_ping') {
+    return {
+      ...draft,
+      url: stringConfig(config, 'url', DEFAULT_DRAFT.url),
+      expectedStatus: stringConfig(config, 'expectedStatus', DEFAULT_DRAFT.expectedStatus),
+      timeoutMs: stringConfig(config, 'timeoutMs', DEFAULT_DRAFT.timeoutMs),
+    }
+  }
+
+  if (job.type === 'dead_letter') {
+    return {
+      ...draft,
+      providerId: stringConfig(config, 'providerId', ''),
+      maximumSilenceHours: stringConfig(
+        config,
+        'maximumSilenceHours',
+        DEFAULT_DRAFT.maximumSilenceHours
+      ),
+    }
+  }
+
+  if (job.type === 'cron_deadline') {
+    return {
+      ...draft,
+      providerId: stringConfig(config, 'providerId', ''),
+      minimumEvents: stringConfig(config, 'minimumEvents', DEFAULT_DRAFT.minimumEvents),
+      windowHours: stringConfig(config, 'windowHours', DEFAULT_DRAFT.windowHours),
+    }
+  }
+
+  return {
+    ...draft,
+    providerId: stringConfig(config, 'providerId', ''),
+    sigmaThreshold: stringConfig(config, 'sigmaThreshold', DEFAULT_DRAFT.sigmaThreshold),
+    baselineDays: stringConfig(config, 'baselineDays', DEFAULT_DRAFT.baselineDays),
+    direction: directionConfig(config.direction),
+  }
+}
+
+function stringConfig(config: Record<string, unknown>, key: string, fallback: string) {
+  const value = config[key]
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value)
+  return fallback
+}
+
+function directionConfig(value: unknown): JobDraft['direction'] {
+  return value === 'spike' || value === 'drop' || value === 'both' ? value : DEFAULT_DRAFT.direction
 }
