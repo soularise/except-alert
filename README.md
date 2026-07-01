@@ -92,6 +92,12 @@ Migrations are plain SQL files in `drizzle/migrations/`. They are not applied au
 npm run db:apply -- drizzle/migrations/0007_organizations_and_plans.sql
 ```
 
+For the Phase 2 controller and abuse-control release, apply the new ExceptAlert migrations before restarting the app:
+
+```bash
+npm run db:apply -- drizzle/migrations/0009_controller_jobs.sql drizzle/migrations/0010_controller_event_idempotency.sql drizzle/migrations/0011_abuse_rate_limits.sql
+```
+
 The script loads `.env` and `.env.production.local` when present, so it works in the Hermes runtime where `psql` is not installed. For production, run it from `/opt/data/services/except-alert` after pulling the latest code and before restarting `next start`.
 
 Local Docker can still use `psql` directly:

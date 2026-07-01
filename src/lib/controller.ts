@@ -1,4 +1,6 @@
 import { lookup } from 'node:dns/promises'
+import http from 'node:http'
+import https from 'node:https'
 import net from 'node:net'
 import { and, count, eq, gte, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
@@ -383,9 +385,10 @@ async function evaluateDeadLetter(
 
 async function evaluateHealthPing(config: HealthPingConfig, now: Date, startedAt: number) {
   let parsedUrl: URL
+  let target: HealthPingTarget
   try {
     parsedUrl = validateHealthPingUrl(config.url)
-    await assertPublicHealthPingTarget(parsedUrl.hostname)
+    target = await resolvePublicHealthPingTarget(parsedUrl.hostname)
   } catch (err) {
     return buildRunResult({
       status: 'error',
@@ -397,12 +400,7 @@ async function evaluateHealthPing(config: HealthPingConfig, now: Date, startedAt
   }
 
   try {
-    const response = await fetch(parsedUrl, {
-      method: 'GET',
-      redirect: 'manual',
-      signal: AbortSignal.timeout(config.timeoutMs),
-    })
-    await response.body?.cancel()
+    const response = await requestHealthPing(parsedUrl, target, config.timeoutMs)
 
     const status = response.status === config.expectedStatus ? 'ok' : 'alert'
     return buildRunResult({
@@ -690,7 +688,12 @@ function buildRunResult(input: {
 }
 
 export function nextRunAfter(now: Date, cronExpr: string, timezone = 'UTC') {
-  const schedule = parseCronSchedule(cronExpr)
+  let schedule: CronSchedule
+  try {
+    schedule = parseCronSchedule(cronExpr)
+  } catch {
+    return new Date(now.getTime() + 5 * 60_000)
+  }
   const safeTimezone = isRuntimeTimeZone(timezone) ? timezone : 'UTC'
   let cursor = new Date(Math.floor(now.getTime() / 60_000) * 60_000 + 60_000)
 
@@ -819,6 +822,11 @@ function isRuntimeTimeZone(value: string) {
   }
 }
 
+type HealthPingTarget = {
+  address: string
+  family: 4 | 6
+}
+
 function validateHealthPingUrl(value: string) {
   const parsed = new URL(value)
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
@@ -830,14 +838,14 @@ function validateHealthPingUrl(value: string) {
   return parsed
 }
 
-async function assertPublicHealthPingTarget(hostname: string) {
+async function resolvePublicHealthPingTarget(hostname: string): Promise<HealthPingTarget> {
   const normalizedHostname = normalizeUrlHostname(hostname)
   const literalVersion = net.isIP(normalizedHostname)
   if (literalVersion) {
     if (isBlockedIp(normalizedHostname, literalVersion)) {
       throw new Error('Health ping URL resolves to a prohibited address')
     }
-    return
+    return { address: normalizedHostname, family: literalVersion as 4 | 6 }
   }
 
   const addresses = await lookup(normalizedHostname, { all: true, verbatim: false })
@@ -850,6 +858,38 @@ async function assertPublicHealthPingTarget(hostname: string) {
       throw new Error('Health ping URL resolves to a prohibited address')
     }
   }
+
+  const target = addresses[0]
+  return { address: target.address, family: target.family as 4 | 6 }
+}
+
+function requestHealthPing(url: URL, target: HealthPingTarget, timeoutMs: number) {
+  const client = url.protocol === 'https:' ? https : http
+  const requestPath = `${url.pathname || '/'}${url.search}`
+  const port = url.port ? Number(url.port) : url.protocol === 'https:' ? 443 : 80
+  const hostHeader = url.port ? `${url.hostname}:${url.port}` : url.hostname
+
+  return new Promise<{ status: number }>((resolve, reject) => {
+    const req = client.request({
+      method: 'GET',
+      host: target.address,
+      port,
+      path: requestPath,
+      family: target.family,
+      headers: { Host: hostHeader },
+      servername: normalizeUrlHostname(url.hostname),
+      timeout: timeoutMs,
+    }, (res) => {
+      resolve({ status: res.statusCode ?? 0 })
+      res.destroy()
+    })
+
+    req.once('timeout', () => {
+      req.destroy(new Error('Health ping request timed out'))
+    })
+    req.once('error', reject)
+    req.end()
+  })
 }
 
 function isBlockedIp(address: string, family: number) {
