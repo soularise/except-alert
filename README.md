@@ -79,7 +79,7 @@ DATABASE_URL=postgres://relay:relay@localhost:5432/relay npm run dev
 | `EXCEPTALERT_ADMIN_EMAILS` | Yes | Comma-separated list of admin email addresses |
 | `EXCEPTALERT_APP_URL` | Yes | Public URL used in outbound emails and links |
 | `RELAY_URL` | Required in production | Public URL of the Relay service. Local Docker Compose defaults to `http://relay:3800`; hosted webhooks should use the public HTTPS Relay origin. |
-| `CONTROLLER_SECRET` | Required for controller scheduler | Shared secret required by `POST /api/internal/controller` and `npm run controller:run`. Use a long random value in production. |
+| `CONTROLLER_SECRET` | Required for controller scheduler | Shared secret required by `POST /api/internal/controller`, `npm run controller:run`, and the Compose `controller-ticker` service. Use a long random value in production. |
 | `CONTROLLER_BASE_URL` | No | Base URL used by `npm run controller:run`. Defaults to `EXCEPTALERT_APP_URL`, then `BETTER_AUTH_URL`, then `http://localhost:3000`. |
 | `EXCEPTALERT_PASSWORD_RESET_EVENT_TENANT_ID` | No | Tenant ID used for password reset event routing |
 | `EXCEPTALERT_PASSWORD_RESET_EVENT_TENANT_SLUG` | No | Tenant slug used for password reset event routing |
@@ -131,7 +131,9 @@ CONTROLLER_SECRET=local-controller-secret npm run controller:run
 
 The script reads `.env`, `.env.local`, and `.env.production.local`, then posts to `/api/internal/controller` on `CONTROLLER_BASE_URL`. If `CONTROLLER_BASE_URL` is not set, it falls back to `EXCEPTALERT_APP_URL`, then `BETTER_AUTH_URL`, then `http://localhost:3000`.
 
-Production schedulers can run the same command every minute, or call the endpoint directly:
+Docker Compose includes a `controller-ticker` service using `curlimages/curl:8.11.1`. It posts to the internal controller endpoint every minute with a 20 second request timeout. Set the same `CONTROLLER_SECRET` for both `exceptalert` and `controller-ticker`; local Compose defaults to `local-controller-secret`.
+
+External schedulers can run the same command every minute, or call the endpoint directly:
 
 ```bash
 curl -X POST \

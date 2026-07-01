@@ -47,6 +47,7 @@ test('controller job validators cover all first-wave job types', () => {
 test('controller job API enforces tenant roles, provider ownership, and plan limits', () => {
   const listRoute = read('src/app/api/[slug]/controller-jobs/route.ts')
   const detailRoute = read('src/app/api/[slug]/controller-jobs/[id]/route.ts')
+  const triggerRoute = read('src/app/api/[slug]/controller-jobs/[id]/trigger/route.ts')
   const planLimits = read('src/lib/plan-limits.ts')
 
   assert.match(planLimits, /controllerJobs: 0/)
@@ -68,6 +69,10 @@ test('controller job API enforces tenant roles, provider ownership, and plan lim
   assert.match(detailRoute, /controllerJobWriteSchema\.parse/)
   assert.match(detailRoute, /providerIdForControllerJob/)
   assert.match(detailRoute, /tenantProviders\.tenantId, access\.tenant\.id/)
+
+  assert.match(triggerRoute, /requireTenantAccess\(request, slug, 'admin'\)/)
+  assert.match(triggerRoute, /runControllerJobNow\(access\.tenant\.id, id\)/)
+  assert.match(triggerRoute, /status: 409/)
 })
 
 test('controller job settings UI exposes plan-aware management', () => {
@@ -86,6 +91,9 @@ test('controller job settings UI exposes plan-aware management', () => {
   assert.match(page, /method: 'POST'/)
   assert.match(page, /method: 'PATCH'/)
   assert.match(page, /method: 'DELETE'/)
+  assert.match(page, /controller-jobs\/\$\{job\.id\}\/trigger/)
+  assert.match(page, /Run now/)
+  assert.match(page, /runningJobId/)
   assert.match(page, /Health ping/)
   assert.match(page, /Silence/)
   assert.match(page, /Deadline/)
@@ -97,7 +105,15 @@ test('controller scheduler claims due jobs and records provider evaluations', ()
   const eventIdempotencyMigration = read('drizzle/migrations/0010_controller_event_idempotency.sql')
 
   assert.match(controller, /export async function runControllerScheduler/)
+  assert.match(controller, /export async function runControllerJobNow/)
   assert.match(controller, /export async function claimDueControllerJobs/)
+  assert.match(controller, /claimControllerJobById/)
+  assert.match(controller, /processControllerJob/)
+  assert.match(controller, /DEFAULT_CONTROLLER_CONCURRENCY/)
+  assert.match(controller, /DEFAULT_JOB_TIMEOUT_MS/)
+  assert.match(controller, /processControllerJobsWithConcurrency/)
+  assert.match(controller, /evaluateControllerJobWithTimeout/)
+  assert.match(controller, /evaluation_timeout/)
   assert.match(controller, /FOR UPDATE SKIP LOCKED/)
   assert.match(controller, /dateFromDb\(job\.lastAlertedAt\)/)
   assert.match(controller, /dateFromDb\(job\.alertStartedAt\)/)
@@ -163,6 +179,8 @@ test('controller scheduler can be triggered by the operations script', () => {
   const packageJson = read('package.json')
   const script = read('scripts/run-controller-scheduler.mjs')
   const readme = read('README.md')
+  const compose = read('docker-compose.yml')
+  const envExample = read('.env.example')
 
   assert.match(packageJson, /"controller:run": "node scripts\/run-controller-scheduler\.mjs"/)
   assert.match(script, /CONTROLLER_SECRET is not set/)
@@ -177,4 +195,13 @@ test('controller scheduler can be triggered by the operations script', () => {
   assert.match(readme, /CONTROLLER_BASE_URL/)
   assert.match(readme, /npm run controller:run/)
   assert.match(readme, /POST \/api\/internal\/controller/)
+  assert.match(readme, /controller-ticker/)
+  assert.match(readme, /curlimages\/curl:8\.11\.1/)
+
+  assert.match(compose, /controller-ticker:/)
+  assert.match(compose, /image: curlimages\/curl:8\.11\.1/)
+  assert.match(compose, /CONTROLLER_SECRET: \$\{CONTROLLER_SECRET:-local-controller-secret\}/)
+  assert.match(compose, /--max-time 20/)
+  assert.match(compose, /http:\/\/exceptalert:3000\/api\/internal\/controller/)
+  assert.match(envExample, /CONTROLLER_SECRET=local-controller-secret/)
 })

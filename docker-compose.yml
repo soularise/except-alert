@@ -23,6 +23,7 @@ services:
       DATABASE_URL: postgres://relay:relay@postgres:5432/relay
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-except-alert-local-dev-secret-change-me}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      CONTROLLER_SECRET: ${CONTROLLER_SECRET:-local-controller-secret}
       EXCEPTALERT_PASSWORD_RESET_EVENT_TENANT_ID: ${EXCEPTALERT_PASSWORD_RESET_EVENT_TENANT_ID:-}
       EXCEPTALERT_PASSWORD_RESET_EVENT_TENANT_SLUG: ${EXCEPTALERT_PASSWORD_RESET_EVENT_TENANT_SLUG:-}
       RELAY_URL: ${RELAY_URL:-http://relay:3800}
@@ -30,6 +31,26 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    restart: unless-stopped
+
+  controller-ticker:
+    image: curlimages/curl:8.11.1
+    depends_on:
+      exceptalert:
+        condition: service_started
+    environment:
+      CONTROLLER_SECRET: ${CONTROLLER_SECRET:-local-controller-secret}
+    command:
+      - sh
+      - -c
+      - |
+        while true; do
+          curl --fail --silent --show-error --max-time 20 \
+            -X POST \
+            -H "x-controller-secret: $$CONTROLLER_SECRET" \
+            http://exceptalert:3000/api/internal/controller || true
+          sleep 60
+        done
     restart: unless-stopped
 
   postgres:

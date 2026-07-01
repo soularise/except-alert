@@ -39,6 +39,8 @@ type SchedulerOptions = {
   now?: Date
   limit?: number
   leaseMs?: number
+  concurrency?: number
+  jobTimeoutMs?: number
 }
 
 type SchedulerCounts = {
@@ -49,10 +51,18 @@ type SchedulerCounts = {
   skipped: number
 }
 
+type ControllerProcessResult = {
+  evaluated: boolean
+  status: ControllerRunStatus | null
+  result: ControllerRunResult | null
+}
+
 type ControllerDb = Pick<typeof db, 'select' | 'insert' | 'update'>
 
 const DEFAULT_BATCH_LIMIT = 25
 const DEFAULT_LEASE_MS = 60_000
+const DEFAULT_CONTROLLER_CONCURRENCY = 5
+const DEFAULT_JOB_TIMEOUT_MS = 30_000
 const DEFAULT_REPEAT_COOLDOWN_MS = 60 * 60_000
 const MAX_CRON_SEARCH_MINUTES = 366 * 24 * 60
 
@@ -60,6 +70,8 @@ export async function runControllerScheduler(options: SchedulerOptions = {}) {
   const now = options.now ?? new Date()
   const limit = options.limit ?? DEFAULT_BATCH_LIMIT
   const leaseMs = options.leaseMs ?? DEFAULT_LEASE_MS
+  const concurrency = sanitizePositiveInteger(options.concurrency, DEFAULT_CONTROLLER_CONCURRENCY)
+  const jobTimeoutMs = sanitizePositiveInteger(options.jobTimeoutMs, DEFAULT_JOB_TIMEOUT_MS)
   const jobs = await claimDueControllerJobs({ now, limit, leaseMs })
 
   const counts: SchedulerCounts = {
@@ -70,62 +82,150 @@ export async function runControllerScheduler(options: SchedulerOptions = {}) {
     skipped: 0,
   }
 
-  for (const job of jobs) {
-    const startedAt = Date.now()
-    let result: ControllerRunResult
+  await processControllerJobsWithConcurrency(jobs, now, jobTimeoutMs, concurrency, counts)
 
-    try {
-      result = await evaluateControllerJob(job, now, startedAt)
-    } catch (err) {
-      result = buildRunResult({
-        status: 'error',
-        outcome: 'evaluation_exception',
-        now,
-        startedAt,
-        details: {
-          message: err instanceof Error ? err.message : 'Unknown controller evaluation error',
-        },
-      })
-    }
+  return counts
+}
 
-    try {
-      const transition = buildControllerTransition(job, result, now)
-      const insertedEvent = await db.transaction(async (tx) => {
-        const event = await recordControllerTransition(tx, job, result, transition, now)
-        await finishControllerJob(tx, job, result, transition, now)
-        return event
-      })
+export async function runControllerJobNow(
+  tenantId: string,
+  jobId: string,
+  options: SchedulerOptions = {}
+) {
+  const now = options.now ?? new Date()
+  const leaseMs = options.leaseMs ?? DEFAULT_LEASE_MS
+  const jobTimeoutMs = sanitizePositiveInteger(options.jobTimeoutMs, DEFAULT_JOB_TIMEOUT_MS)
+  const [job] = await claimControllerJobById({ tenantId, jobId, now, leaseMs })
 
-      if (insertedEvent) {
-        const delivery = await sendTenantAlertNotifications(
-          job.tenantId,
-          controllerNotificationMessage(job, result, insertedEvent.transition)
-        )
-        if (delivery.failed.length > 0) {
-          console.error('[controller] Alert delivery failed:', delivery.failed)
-        }
-      }
-
-      counts.evaluated += 1
-      if (result.status === 'alert') counts.alerted += 1
-      if (result.status === 'error') counts.errored += 1
-    } catch (err) {
-      counts.skipped += 1
-      console.error('[controller] Failed to record controller result:', {
-        jobId: job.id,
-        message: err instanceof Error ? err.message : 'Unknown controller record error',
-      })
+  if (!job) {
+    return {
+      claimed: false,
+      evaluated: false,
+      result: null,
     }
   }
 
-  return counts
+  const processed = await processControllerJob(job, now, jobTimeoutMs)
+  return {
+    claimed: true,
+    evaluated: processed.evaluated,
+    result: processed.result,
+  }
+}
+
+async function processControllerJob(
+  job: ClaimedControllerJob,
+  now: Date,
+  jobTimeoutMs: number
+): Promise<ControllerProcessResult> {
+  const startedAt = Date.now()
+  const result = await evaluateControllerJobWithTimeout(job, now, startedAt, jobTimeoutMs)
+
+  try {
+    const transition = buildControllerTransition(job, result, now)
+    const insertedEvent = await db.transaction(async (tx) => {
+      const event = await recordControllerTransition(tx, job, result, transition, now)
+      await finishControllerJob(tx, job, result, transition, now)
+      return event
+    })
+
+    if (insertedEvent) {
+      const delivery = await sendTenantAlertNotifications(
+        job.tenantId,
+        controllerNotificationMessage(job, result, insertedEvent.transition)
+      )
+      if (delivery.failed.length > 0) {
+        console.error('[controller] Alert delivery failed:', delivery.failed)
+      }
+    }
+
+    return {
+      evaluated: true,
+      status: result.status,
+      result,
+    }
+  } catch (err) {
+    console.error('[controller] Failed to record controller result:', {
+      jobId: job.id,
+      message: err instanceof Error ? err.message : 'Unknown controller record error',
+    })
+    return {
+      evaluated: false,
+      status: null,
+      result,
+    }
+  }
+}
+
+async function processControllerJobsWithConcurrency(
+  jobs: ClaimedControllerJob[],
+  now: Date,
+  jobTimeoutMs: number,
+  concurrency: number,
+  counts: SchedulerCounts
+) {
+  const queue = [...jobs]
+  const workerCount = Math.min(concurrency, queue.length)
+
+  await Promise.all(Array.from({ length: workerCount }, async () => {
+    while (queue.length > 0) {
+      const job = queue.shift()
+      if (!job) continue
+
+      const processed = await processControllerJob(job, now, jobTimeoutMs)
+      if (processed.evaluated) {
+        counts.evaluated += 1
+        if (processed.status === 'alert') counts.alerted += 1
+        if (processed.status === 'error') counts.errored += 1
+      } else {
+        counts.skipped += 1
+      }
+    }
+  }))
+}
+
+async function evaluateControllerJobWithTimeout(
+  job: ClaimedControllerJob,
+  now: Date,
+  startedAt: number,
+  jobTimeoutMs: number
+) {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
+  try {
+    return await Promise.race([
+      evaluateControllerJob(job, now, startedAt),
+      new Promise<ControllerRunResult>((resolve) => {
+        timeoutId = setTimeout(() => {
+          resolve(buildRunResult({
+            status: 'error',
+            outcome: 'evaluation_timeout',
+            now,
+            startedAt,
+            details: { timeoutMs: jobTimeoutMs },
+          }))
+        }, jobTimeoutMs)
+      }),
+    ])
+  } catch (err) {
+    return buildRunResult({
+      status: 'error',
+      outcome: 'evaluation_exception',
+      now,
+      startedAt,
+      details: {
+        message: err instanceof Error ? err.message : 'Unknown controller evaluation error',
+      },
+    })
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId)
+  }
 }
 
 export async function claimDueControllerJobs({
   now,
   limit,
   leaseMs,
-}: Required<SchedulerOptions>) {
+}: Required<Pick<SchedulerOptions, 'now' | 'limit' | 'leaseMs'>>) {
   const leaseExpiresAt = new Date(now.getTime() + leaseMs)
   const nowIso = now.toISOString()
   const leaseExpiresAtIso = leaseExpiresAt.toISOString()
@@ -158,7 +258,57 @@ export async function claimDueControllerJobs({
       controller_jobs.alert_started_at AS "alertStartedAt"
   `)
 
-  return Array.from(result as unknown as ClaimedControllerJob[]).map((job) => ({
+  return normalizeClaimedControllerJobs(result)
+}
+
+async function claimControllerJobById({
+  tenantId,
+  jobId,
+  now,
+  leaseMs,
+}: {
+  tenantId: string
+  jobId: string
+  now: Date
+  leaseMs: number
+}) {
+  const leaseExpiresAt = new Date(now.getTime() + leaseMs)
+  const nowIso = now.toISOString()
+  const leaseExpiresAtIso = leaseExpiresAt.toISOString()
+  const result = await db.execute(sql`
+    WITH requested AS (
+      SELECT id
+      FROM controller_jobs
+      WHERE id = ${jobId}::uuid
+        AND tenant_id = ${tenantId}::uuid
+        AND enabled = true
+        AND (lease_expires_at IS NULL OR lease_expires_at <= ${nowIso}::timestamptz)
+      LIMIT 1
+      FOR UPDATE SKIP LOCKED
+    )
+    UPDATE controller_jobs
+    SET lease_expires_at = ${leaseExpiresAtIso}::timestamptz,
+        updated_at = ${nowIso}::timestamptz
+    FROM requested
+    WHERE controller_jobs.id = requested.id
+    RETURNING
+      controller_jobs.id,
+      controller_jobs.tenant_id AS "tenantId",
+      controller_jobs.name,
+      controller_jobs.type,
+      controller_jobs.config,
+      controller_jobs.cron_expr AS "cronExpr",
+      controller_jobs.timezone,
+      controller_jobs.last_status AS "lastStatus",
+      controller_jobs.last_alerted_at AS "lastAlertedAt",
+      controller_jobs.alert_started_at AS "alertStartedAt"
+  `)
+
+  return normalizeClaimedControllerJobs(result)
+}
+
+function normalizeClaimedControllerJobs(result: unknown) {
+  return Array.from(result as ClaimedControllerJob[]).map((job) => ({
     ...job,
     lastAlertedAt: dateFromDb(job.lastAlertedAt),
     alertStartedAt: dateFromDb(job.alertStartedAt),
@@ -507,6 +657,10 @@ function controllerNotificationMessage(
 
 function cooldownBucketFor(alertStartedAt: Date, now: Date) {
   return Math.max(0, Math.floor((now.getTime() - alertStartedAt.getTime()) / DEFAULT_REPEAT_COOLDOWN_MS))
+}
+
+function sanitizePositiveInteger(value: number | undefined, fallback: number) {
+  return Number.isInteger(value) && value !== undefined && value > 0 ? value : fallback
 }
 
 function invalidConfigResult(now: Date, startedAt: number, message: string) {

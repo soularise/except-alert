@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Activity, Clock, Pause, Play, Trash2 } from 'lucide-react'
+import { Activity, Clock, Pause, Play, RotateCw, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -96,6 +96,7 @@ export default function ControllerJobsPage() {
   const [draft, setDraft] = useState<JobDraft>(DEFAULT_DRAFT)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [runningJobId, setRunningJobId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -227,6 +228,24 @@ export default function ControllerJobsPage() {
     }
   }
 
+  async function runJobNow(job: ControllerJob) {
+    setRunningJobId(job.id)
+    setError(null)
+
+    try {
+      const res = await fetch(`/api/${tenant.slug}/controller-jobs/${job.id}/trigger`, {
+        method: 'POST',
+      })
+      const data = await res.json() as { error?: string }
+      if (!res.ok) throw new Error(data.error ?? 'Failed to run controller job')
+      await loadControllerState()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to run controller job')
+    } finally {
+      setRunningJobId(null)
+    }
+  }
+
   async function deleteJob(job: ControllerJob) {
     if (!window.confirm(`Delete ${job.name}?`)) return
 
@@ -309,6 +328,16 @@ export default function ControllerJobsPage() {
                     <TableCell>
                       {canManage && (
                         <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={!job.enabled || runningJobId === job.id}
+                            onClick={() => runJobNow(job)}
+                          >
+                            <RotateCw className="h-4 w-4" />
+                            {runningJobId === job.id ? 'Running...' : 'Run now'}
+                          </Button>
                           <Button
                             type="button"
                             variant="outline"
