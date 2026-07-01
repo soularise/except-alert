@@ -66,6 +66,23 @@ export const authVerification = pgTable('verification', {
   updatedAt:  timestamp('updated_at'),
 })
 
+export const abuseRateLimits = pgTable(
+  'abuse_rate_limits',
+  {
+    id:          bigserial('id', { mode: 'number' }).primaryKey(),
+    key:         text('key').notNull(),
+    scope:       text('scope').notNull(),
+    windowStart: timestamptz('window_start').notNull(),
+    attempts:    integer('attempts').notNull().default(0),
+    firstSeenAt: timestamptz('first_seen_at').notNull().defaultNow(),
+    lastSeenAt:  timestamptz('last_seen_at').notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('abuse_rate_limits_key_window_unique').on(t.key, t.windowStart),
+    index('abuse_rate_limits_scope_window_idx').on(t.scope, t.windowStart),
+  ]
+)
+
 // ─── Tenant tables ────────────────────────────────────────────────────────────
 
 export const tenants = pgTable(

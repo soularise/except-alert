@@ -5,10 +5,41 @@ import {
   OrganizationLifecycleError,
 } from '@/lib/organization-lifecycle'
 import { isPlatformAdminEmail } from '@/lib/admin'
+import {
+  enforcePersistentRateLimit,
+  getRequestIp,
+  RateLimitExceededError,
+} from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers })
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  try {
+    await enforcePersistentRateLimit({
+      scope: 'setup_tenant_ip',
+      identifier: getRequestIp(req),
+      limit: 10,
+      windowMs: 15 * 60 * 1000,
+    })
+    await enforcePersistentRateLimit({
+      scope: 'setup_tenant_user',
+      identifier: session.user.id,
+      limit: 5,
+      windowMs: 60 * 60 * 1000,
+    })
+  } catch (err) {
+    if (err instanceof RateLimitExceededError) {
+      return NextResponse.json(
+        { error: 'Too many setup attempts. Try again later.' },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(err.retryAfterSeconds) },
+        }
+      )
+    }
+    throw err
+  }
 
   let body: unknown
   try { body = await req.json() } catch {

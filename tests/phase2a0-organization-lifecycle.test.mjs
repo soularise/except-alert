@@ -86,3 +86,19 @@ test('setup and public signup preserve invite-safe bootstrap behavior', () => {
   assert.match(signupClient, /authClient\.signUp\.email/)
   assert.match(signupClient, /returnTo \?\? '\/setup'/)
 })
+
+test('public signup and setup have persistent abuse controls', () => {
+  const migration = read('drizzle/migrations/0011_abuse_rate_limits.sql')
+  const authRoute = read('src/app/api/auth/[...all]/route.ts')
+  const setupRoute = read('src/app/api/setup/tenant/route.ts')
+  const limiter = read('src/lib/rate-limit.ts')
+
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS abuse_rate_limits/)
+  assert.match(limiter, /ON CONFLICT \(key, window_start\)/)
+  assert.match(limiter, /createHash\('sha256'\)/)
+  assert.match(authRoute, /isSignupEmailRequest/)
+  assert.match(authRoute, /auth_signup_ip/)
+  assert.match(authRoute, /auth_signup_email/)
+  assert.match(setupRoute, /setup_tenant_ip/)
+  assert.match(setupRoute, /setup_tenant_user/)
+})
