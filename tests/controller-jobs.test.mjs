@@ -91,3 +91,35 @@ test('controller job settings UI exposes plan-aware management', () => {
   assert.match(page, /Deadline/)
   assert.match(page, /Deviation/)
 })
+
+test('controller scheduler skeleton claims due jobs and records provider evaluations', () => {
+  const controller = read('src/lib/controller.ts')
+
+  assert.match(controller, /export async function runControllerScheduler/)
+  assert.match(controller, /export async function claimDueControllerJobs/)
+  assert.match(controller, /FOR UPDATE SKIP LOCKED/)
+  assert.match(controller, /lease_expires_at/)
+  assert.match(controller, /finishControllerJob/)
+  assert.match(controller, /lastStatus: result\.status/)
+  assert.match(controller, /lastResult: result/)
+  assert.match(controller, /nextRunAfter\(now, job\.cronExpr\)/)
+  assert.match(controller, /evaluateDeadLetter/)
+  assert.match(controller, /evaluateCronDeadline/)
+  assert.match(controller, /eq\(events\.tenantId, tenantId\)/)
+  assert.match(controller, /eq\(events\.source, providerId\)/)
+  assert.match(controller, /health_ping_deferred/)
+  assert.match(controller, /deviation_deferred/)
+})
+
+test('internal controller route requires a timing-safe secret and runs scheduler counts', () => {
+  const route = read('src/app/api/internal/controller/route.ts')
+
+  assert.match(route, /process\.env\.CONTROLLER_SECRET/)
+  assert.match(route, /x-controller-secret/)
+  assert.match(route, /timingSafeEqual/)
+  assert.match(route, /leftBuffer\.length !== rightBuffer\.length/)
+  assert.match(route, /runControllerScheduler\(\)/)
+  assert.match(route, /NextResponse\.json\(\{ ok: true, counts \}\)/)
+  assert.match(route, /status: 404/)
+  assert.match(route, /status: 503/)
+})
