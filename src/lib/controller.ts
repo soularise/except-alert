@@ -96,20 +96,22 @@ export async function claimDueControllerJobs({
   leaseMs,
 }: Required<SchedulerOptions>) {
   const leaseExpiresAt = new Date(now.getTime() + leaseMs)
+  const nowIso = now.toISOString()
+  const leaseExpiresAtIso = leaseExpiresAt.toISOString()
   const result = await db.execute(sql`
     WITH due AS (
       SELECT id
       FROM controller_jobs
       WHERE enabled = true
-        AND next_run_at <= ${now}
-        AND (lease_expires_at IS NULL OR lease_expires_at <= ${now})
+        AND next_run_at <= ${nowIso}::timestamptz
+        AND (lease_expires_at IS NULL OR lease_expires_at <= ${nowIso}::timestamptz)
       ORDER BY next_run_at ASC
       LIMIT ${limit}
       FOR UPDATE SKIP LOCKED
     )
     UPDATE controller_jobs
-    SET lease_expires_at = ${leaseExpiresAt},
-        updated_at = ${now}
+    SET lease_expires_at = ${leaseExpiresAtIso}::timestamptz,
+        updated_at = ${nowIso}::timestamptz
     FROM due
     WHERE controller_jobs.id = due.id
     RETURNING
