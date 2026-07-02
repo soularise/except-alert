@@ -5,6 +5,7 @@ import { controllerJobs, tenantProviders } from '@/lib/db/schema'
 import { requireTenantAccess } from '@/lib/auth-guard'
 import { canCreateControllerJob, limitsFor } from '@/lib/plan-limits'
 import { controllerJobWriteSchema, providerIdForControllerJob } from '@/lib/controller-jobs'
+import { sanitizeControllerJob } from '@/lib/controller-job-response'
 
 type Params = { params: Promise<{ slug: string }> }
 
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       .where(eq(controllerJobs.tenantId, access.tenant.id))
       .orderBy(desc(controllerJobs.createdAt))
 
-    return NextResponse.json({ jobs })
+    return NextResponse.json({ jobs: jobs.map(sanitizeControllerJob) })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest, { params }: Params) {
         .returning()
     })
 
-    return NextResponse.json({ job: created }, { status: 201 })
+    return NextResponse.json({ job: sanitizeControllerJob(created) }, { status: 201 })
   } catch (err) {
     return controllerJobErrorResponse(err, access.tenant.plan)
   }

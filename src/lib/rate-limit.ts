@@ -9,10 +9,17 @@ export class RateLimitExceededError extends Error {
 }
 
 export function getRequestIp(request: Request) {
+  const trustProxyHeaders =
+    process.env.EXCEPTALERT_TRUST_PROXY_HEADERS === 'true' ||
+    process.env.NODE_ENV !== 'production'
+
+  if (!trustProxyHeaders) return 'untrusted-proxy'
+
+  const cloudflareIp = request.headers.get('cf-connecting-ip')?.trim()
   const forwardedFor = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
   return (
+    cloudflareIp ||
     forwardedFor ||
-    request.headers.get('cf-connecting-ip')?.trim() ||
     request.headers.get('x-real-ip')?.trim() ||
     'unknown'
   )

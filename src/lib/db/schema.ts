@@ -101,6 +101,20 @@ export const tenants = pgTable(
   (t) => [uniqueIndex('tenants_ingress_key_unique').on(t.ingressKey)]
 )
 
+export const tenantPlanChanges = pgTable(
+  'tenant_plan_changes',
+  {
+    id:           uuid('id').primaryKey().defaultRandom(),
+    tenantId:     uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    previousPlan: text('previous_plan').notNull(),
+    nextPlan:     text('next_plan').notNull(),
+    actorUserId:  text('actor_user_id').references(() => authUser.id),
+    reason:       text('reason').notNull(),
+    createdAt:    timestamptz('created_at').notNull().defaultNow(),
+  },
+  (t) => [index('idx_tenant_plan_changes_tenant_created').on(t.tenantId, t.createdAt)]
+)
+
 export const tenantMemberships = pgTable('tenant_memberships', {
   id:        uuid('id').primaryKey().defaultRandom(),
   userId:    text('user_id').notNull(),

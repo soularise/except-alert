@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { hashPassword } from 'better-auth/crypto'
 import { db } from './db'
 import { authAccount, authUser, tenantMemberships, tenants } from './db/schema'
@@ -58,6 +58,8 @@ export async function provisionCustomer(input: ProvisionInput): Promise<Provisio
   const now = new Date()
 
   const tenant = await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${email}), 1)`)
+
     const [existingUser] = await tx
       .select({ id: authUser.id })
       .from(authUser)

@@ -3,10 +3,7 @@ import { db } from '@/lib/db'
 import { events } from '@/lib/db/schema'
 import { requireTenantAccess } from '@/lib/auth-guard'
 import { PROVIDERS } from '@/lib/providers'
-
-// Module-level rate limit store: "tenantId:providerId" -> last test timestamp (ms)
-const lastTestAt = new Map<string, number>()
-const RATE_LIMIT_MS = 30_000
+import { enforcePersistentRateLimit, RateLimitExceededError } from '@/lib/rate-limit'
 
 export async function POST(
   request: NextRequest,
@@ -19,17 +16,14 @@ export async function POST(
   const providerDef = PROVIDERS.find((p) => p.id === providerId)
   if (!providerDef) return NextResponse.json({ error: 'Provider not found' }, { status: 404 })
 
-  const rateLimitKey = `${access.tenant.id}:${providerId}`
-  const last = lastTestAt.get(rateLimitKey) ?? 0
-  if (Date.now() - last < RATE_LIMIT_MS) {
-    return NextResponse.json(
-      { error: 'Rate limited — wait 30 seconds between tests' },
-      { status: 429 }
-    )
-  }
-  lastTestAt.set(rateLimitKey, Date.now())
-
   try {
+    await enforcePersistentRateLimit({
+      scope: 'provider_test',
+      identifier: `${access.tenant.id}:${providerId}`,
+      limit: 1,
+      windowMs: 30_000,
+    })
+
     const [event] = await db
       .insert(events)
       .values({
@@ -48,7 +42,13 @@ export async function POST(
       .returning()
 
     return NextResponse.json({ ok: true, eventId: event.id })
-  } catch {
+  } catch (err) {
+    if (err instanceof RateLimitExceededError) {
+      return NextResponse.json(
+        { error: 'Rate limited. Wait 30 seconds between tests.' },
+        { status: 429, headers: { 'Retry-After': String(err.retryAfterSeconds) } }
+      )
+    }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

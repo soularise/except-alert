@@ -1,9 +1,9 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { cache } from 'react'
 import { db } from './db'
 import { auth } from './auth'
-import { tenantInvitations, tenantMemberships, tenants } from './db/schema'
+import { authUser, tenantInvitations, tenantMemberships, tenants } from './db/schema'
 import { createIngressKey } from './organization-lifecycle'
 
 export const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000001'
@@ -96,41 +96,55 @@ export async function createInvitation(
 }
 
 export async function acceptInvitation(token: string, userId: string, userEmail: string) {
-  const [invitation] = await db
-    .select()
-    .from(tenantInvitations)
-    .where(eq(tenantInvitations.token, token))
-    .limit(1)
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${token}), 2)`)
 
-  if (!invitation) return { error: 'Invitation not found' as const }
-  if (invitation.acceptedAt) return { error: 'Invitation already used' as const }
-  if (new Date() > invitation.expiresAt) return { error: 'Invitation expired' as const }
-  if (invitation.email.toLowerCase() !== userEmail.toLowerCase()) {
-    return { error: 'Invitation was sent to a different email address' as const }
-  }
+    const [invitation] = await tx
+      .select()
+      .from(tenantInvitations)
+      .where(eq(tenantInvitations.token, token))
+      .limit(1)
 
-  await db
-    .insert(tenantMemberships)
-    .values({
-      userId,
-      tenantId:  invitation.tenantId,
-      role:      invitation.role,
-      invitedBy: invitation.invitedBy,
-    })
-    .onConflictDoNothing()
+    if (!invitation) return { error: 'Invitation not found' as const }
+    if (invitation.acceptedAt) return { error: 'Invitation already used' as const }
+    if (new Date() > invitation.expiresAt) return { error: 'Invitation expired' as const }
+    if (invitation.email.toLowerCase() !== userEmail.toLowerCase()) {
+      return { error: 'Invitation was sent to a different email address' as const }
+    }
 
-  await db
-    .update(tenantInvitations)
-    .set({ acceptedAt: new Date() })
-    .where(eq(tenantInvitations.token, token))
+    const [user] = await tx
+      .select({ emailVerified: authUser.emailVerified })
+      .from(authUser)
+      .where(eq(authUser.id, userId))
+      .limit(1)
 
-  const [tenant] = await db
-    .select()
-    .from(tenants)
-    .where(eq(tenants.id, invitation.tenantId))
-    .limit(1)
+    if (!user?.emailVerified) {
+      return { error: 'Verify your email address before accepting this invitation' as const }
+    }
 
-  return { tenant }
+    await tx
+      .insert(tenantMemberships)
+      .values({
+        userId,
+        tenantId:  invitation.tenantId,
+        role:      invitation.role,
+        invitedBy: invitation.invitedBy,
+      })
+      .onConflictDoNothing()
+
+    await tx
+      .update(tenantInvitations)
+      .set({ acceptedAt: new Date() })
+      .where(eq(tenantInvitations.token, token))
+
+    const [tenant] = await tx
+      .select()
+      .from(tenants)
+      .where(eq(tenants.id, invitation.tenantId))
+      .limit(1)
+
+    return { tenant }
+  })
 }
 
 export async function getServerTenantId(slug: string): Promise<string | null> {

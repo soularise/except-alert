@@ -1,7 +1,7 @@
 import { randomBytes } from 'crypto'
 import { eq, sql } from 'drizzle-orm'
 import { db } from './db'
-import { tenantMemberships, tenants } from './db/schema'
+import { tenantMemberships, tenantPlanChanges, tenants } from './db/schema'
 import type { Plan } from './plan-limits'
 
 export class OrganizationLifecycleError extends Error {
@@ -50,6 +50,42 @@ export async function createPaidOrganization(input: {
     organizationName: input.organizationName,
     plan: input.plan,
     selfServe: false,
+  })
+}
+
+export async function changeOrganizationPlan(input: {
+  tenantId: string
+  nextPlan: Plan
+  actorUserId: string
+  reason: string
+}) {
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${input.tenantId}), 3)`)
+
+    const [tenant] = await tx
+      .select({ id: tenants.id, plan: tenants.plan })
+      .from(tenants)
+      .where(eq(tenants.id, input.tenantId))
+      .limit(1)
+
+    if (!tenant) return null
+    if (tenant.plan === input.nextPlan) return tenant
+
+    const [updated] = await tx
+      .update(tenants)
+      .set({ plan: input.nextPlan })
+      .where(eq(tenants.id, input.tenantId))
+      .returning()
+
+    await tx.insert(tenantPlanChanges).values({
+      tenantId: input.tenantId,
+      previousPlan: tenant.plan,
+      nextPlan: input.nextPlan,
+      actorUserId: input.actorUserId,
+      reason: input.reason,
+    })
+
+    return updated
   })
 }
 

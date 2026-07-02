@@ -56,6 +56,7 @@ test('tenant admin role does not grant platform provisioning', () => {
 test('admin provisioning creates a credential account with a temporary password', () => {
   const source = read('src/lib/admin-provisioning.ts')
   assert.match(source, /hashPassword\(tempPassword\)/)
+  assert.match(source, /pg_advisory_xact_lock\(hashtext\(\$\{email\}\), 1\)/)
   assert.match(source, /providerId: 'credential'/)
   assert.match(source, /role: 'owner'/)
   assert.match(source, /plan: 'pro'/)

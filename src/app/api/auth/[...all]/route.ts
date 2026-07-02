@@ -25,14 +25,12 @@ export async function POST(request: NextRequest) {
         windowMs: 15 * 60 * 1000,
       })
 
-      if (email) {
-        await enforcePersistentRateLimit({
-          scope: 'auth_signup_email',
-          identifier: email,
-          limit: 3,
-          windowMs: 60 * 60 * 1000,
-        })
-      }
+      await enforcePersistentRateLimit({
+        scope: 'auth_signup_email',
+        identifier: email ?? 'missing-or-invalid-email',
+        limit: 3,
+        windowMs: 60 * 60 * 1000,
+      })
     } catch (err) {
       if (err instanceof RateLimitExceededError) return rateLimited(err)
       throw err

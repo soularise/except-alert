@@ -5,6 +5,7 @@ import { events } from '@/lib/db/schema'
 import { evaluateBaselines } from '@/lib/baselines'
 import { requireTenantAccess } from '@/lib/auth-guard'
 import { getMonthlyExternalEventUsage } from '@/lib/event-usage'
+import { limitsFor } from '@/lib/plan-limits'
 
 const VALID_SEVERITIES = new Set(['critical', 'error', 'warning', 'info'])
 const VALID_STATUSES = new Set(['open', 'acknowledged', 'resolved', 'dismissed'])
@@ -103,6 +104,8 @@ export async function GET(
       totalCount: totalResult?.value ?? 0,
       recentCount: recentResult?.value ?? 0,
       monthlyExternalEventCount,
+      monthlyEventLimit: limitsFor(access.tenant.plan).externalEventsPerMonth,
+      plan: access.tenant.plan,
     })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

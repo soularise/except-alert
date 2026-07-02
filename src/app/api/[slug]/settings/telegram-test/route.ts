@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { settings } from '@/lib/db/schema'
 import { requireTenantAccess } from '@/lib/auth-guard'
 import { sendTelegramAlert } from '@/lib/telegram'
+import { canUseChannel } from '@/lib/plan-limits'
 
 export async function POST(
   request: NextRequest,
@@ -12,6 +13,12 @@ export async function POST(
   const { slug } = await params
   const access = await requireTenantAccess(request, slug, 'admin')
   if (!access) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!canUseChannel(access.tenant.plan, 'telegram')) {
+    return NextResponse.json(
+      { error: 'Telegram delivery is not available on this plan' },
+      { status: 403 }
+    )
+  }
 
   try {
     let botToken: string | null = null

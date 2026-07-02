@@ -5,6 +5,8 @@ import { db } from '@/lib/db'
 import { controllerJobs, tenantProviders } from '@/lib/db/schema'
 import { requireTenantAccess } from '@/lib/auth-guard'
 import { controllerJobWriteSchema, providerIdForControllerJob } from '@/lib/controller-jobs'
+import { canCreateControllerJob, limitsFor } from '@/lib/plan-limits'
+import { sanitizeControllerJob } from '@/lib/controller-job-response'
 
 type Params = { params: Promise<{ slug: string; id: string }> }
 
@@ -21,7 +23,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       .limit(1)
 
     if (!job) return NextResponse.json({ error: 'Controller job not found' }, { status: 404 })
-    return NextResponse.json({ job })
+    return NextResponse.json({ job: sanitizeControllerJob(job) })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -68,6 +70,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       enabled: updates.enabled ?? existing.enabled,
     })
 
+    if (candidate.enabled && !canCreateControllerJob(access.tenant.plan, 0)) {
+      const limit = limitsFor(access.tenant.plan).controllerJobs
+      return NextResponse.json(
+        { error: `Your current plan allows ${limit} controller job${limit === 1 ? '' : 's'}.` },
+        { status: 403 }
+      )
+    }
+
     const providerId = providerIdForControllerJob(candidate.type, candidate.config)
     if (providerId) {
       const [provider] = await db
@@ -103,7 +113,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       .where(and(eq(controllerJobs.id, id), eq(controllerJobs.tenantId, access.tenant.id)))
       .returning()
 
-    return NextResponse.json({ job: updated })
+    return NextResponse.json({ job: sanitizeControllerJob(updated) })
   } catch (err) {
     if (err instanceof ZodError) {
       return NextResponse.json({ error: 'Invalid controller job configuration' }, { status: 400 })

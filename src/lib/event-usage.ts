@@ -13,8 +13,8 @@ export async function getMonthlyExternalEventUsage(tenantId: string): Promise<nu
         sql`${events.source} <> 'auth'`,
         sql`${events.category} <> 'test'`,
         sql`COALESCE(${events.tags}->>'test', 'false') <> 'true'`,
-        sql`${events.receivedAt} >= date_trunc('month', now())`,
-        sql`${events.receivedAt} < date_trunc('month', now()) + interval '1 month'`
+        sql`${events.receivedAt} >= (date_trunc('month', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')`,
+        sql`${events.receivedAt} < (date_trunc('month', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC') + interval '1 month'`
       )
     )
 

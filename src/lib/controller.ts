@@ -151,12 +151,25 @@ async function processControllerJob(
       jobId: job.id,
       message: err instanceof Error ? err.message : 'Unknown controller record error',
     })
+    await releaseControllerJobLease(job.id).catch((releaseErr) =>
+      console.error('[controller] Failed to release controller lease:', {
+        jobId: job.id,
+        message: releaseErr instanceof Error ? releaseErr.message : 'Unknown lease release error',
+      })
+    )
     return {
       evaluated: false,
       status: null,
       result,
     }
   }
+}
+
+async function releaseControllerJobLease(jobId: string) {
+  await db
+    .update(controllerJobs)
+    .set({ leaseExpiresAt: null, updatedAt: new Date() })
+    .where(eq(controllerJobs.id, jobId))
 }
 
 async function processControllerJobsWithConcurrency(
@@ -233,12 +246,14 @@ export async function claimDueControllerJobs({
   const leaseExpiresAtIso = leaseExpiresAt.toISOString()
   const result = await db.execute(sql`
     WITH due AS (
-      SELECT id
+      SELECT controller_jobs.id
       FROM controller_jobs
-      WHERE enabled = true
-        AND next_run_at <= ${nowIso}::timestamptz
-        AND (lease_expires_at IS NULL OR lease_expires_at <= ${nowIso}::timestamptz)
-      ORDER BY next_run_at ASC
+      INNER JOIN tenants ON tenants.id = controller_jobs.tenant_id
+      WHERE controller_jobs.enabled = true
+        AND tenants.plan <> 'free'
+        AND controller_jobs.next_run_at <= ${nowIso}::timestamptz
+        AND (controller_jobs.lease_expires_at IS NULL OR controller_jobs.lease_expires_at <= ${nowIso}::timestamptz)
+      ORDER BY controller_jobs.next_run_at ASC
       LIMIT ${limit}
       FOR UPDATE SKIP LOCKED
     )
@@ -279,12 +294,14 @@ async function claimControllerJobById({
   const leaseExpiresAtIso = leaseExpiresAt.toISOString()
   const result = await db.execute(sql`
     WITH requested AS (
-      SELECT id
+      SELECT controller_jobs.id
       FROM controller_jobs
-      WHERE id = ${jobId}::uuid
-        AND tenant_id = ${tenantId}::uuid
-        AND enabled = true
-        AND (lease_expires_at IS NULL OR lease_expires_at <= ${nowIso}::timestamptz)
+      INNER JOIN tenants ON tenants.id = controller_jobs.tenant_id
+      WHERE controller_jobs.id = ${jobId}::uuid
+        AND controller_jobs.tenant_id = ${tenantId}::uuid
+        AND tenants.plan <> 'free'
+        AND controller_jobs.enabled = true
+        AND (controller_jobs.lease_expires_at IS NULL OR controller_jobs.lease_expires_at <= ${nowIso}::timestamptz)
       LIMIT 1
       FOR UPDATE SKIP LOCKED
     )

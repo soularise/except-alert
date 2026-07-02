@@ -11,14 +11,19 @@ function read(path) {
 
 test('organization plan migration adds explicit entitlements and opaque ingress keys', () => {
   const migration = read('drizzle/migrations/0007_organizations_and_plans.sql')
+  const planChangeMigration = read('drizzle/migrations/0012_tenant_plan_changes.sql')
   const schema = read('src/lib/db/schema.ts')
 
   assert.match(migration, /ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'free'/)
   assert.match(migration, /CHECK \(plan IN \('free', 'pro', 'growth'\)\)/)
   assert.match(migration, /ADD COLUMN IF NOT EXISTS ingress_key TEXT/)
   assert.match(migration, /tenants_ingress_key_unique/)
+  assert.match(planChangeMigration, /CREATE TABLE IF NOT EXISTS tenant_plan_changes/)
+  assert.match(planChangeMigration, /previous_plan TEXT NOT NULL/)
+  assert.match(planChangeMigration, /next_plan\s+TEXT NOT NULL/)
   assert.match(schema, /plan:\s+text\('plan'\)\.notNull\(\)\.default\('free'\)/)
   assert.match(schema, /ingressKey:\s+text\('ingress_key'\)\.notNull\(\)/)
+  assert.match(schema, /export const tenantPlanChanges = pgTable/)
 })
 
 test('signup creates identity only and setup uses the organization lifecycle service', () => {
@@ -33,6 +38,8 @@ test('signup creates identity only and setup uses the organization lifecycle ser
   assert.match(setup, /OrganizationLifecycleError/)
   assert.match(lifecycle, /pg_advisory_xact_lock/)
   assert.match(lifecycle, /createdByUserId: input\.selfServe \? input\.userId : null/)
+  assert.match(lifecycle, /export async function changeOrganizationPlan/)
+  assert.match(lifecycle, /tenantPlanChanges/)
 })
 
 test('providers and invitations enforce plan limits server-side', () => {
@@ -97,9 +104,20 @@ test('public signup and setup have persistent abuse controls', () => {
   assert.match(migration, /CREATE TABLE IF NOT EXISTS abuse_rate_limits/)
   assert.match(limiter, /ON CONFLICT \(key, window_start\)/)
   assert.match(limiter, /createHash\('sha256'\)/)
+  assert.match(limiter, /EXCEPTALERT_TRUST_PROXY_HEADERS/)
+  assert.match(limiter, /cf-connecting-ip/)
   assert.match(authRoute, /isSignupEmailRequest/)
   assert.match(authRoute, /auth_signup_ip/)
   assert.match(authRoute, /auth_signup_email/)
+  assert.match(authRoute, /missing-or-invalid-email/)
   assert.match(setupRoute, /setup_tenant_ip/)
   assert.match(setupRoute, /setup_tenant_user/)
+})
+
+test('invitation acceptance requires a verified account and locked token use', () => {
+  const tenancy = read('src/lib/tenancy.ts')
+
+  assert.match(tenancy, /pg_advisory_xact_lock\(hashtext\(\$\{token\}\), 2\)/)
+  assert.match(tenancy, /authUser\.emailVerified/)
+  assert.match(tenancy, /Verify your email address before accepting this invitation/)
 })

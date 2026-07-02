@@ -1,7 +1,5 @@
-import { eq } from 'drizzle-orm'
 import { isPlatformAdminEmail } from './admin'
-import { db } from './db'
-import { tenants } from './db/schema'
+import { changeOrganizationPlan } from './organization-lifecycle'
 import type { Plan } from './plan-limits'
 import type { TenantRole } from './tenant-access'
 
@@ -32,11 +30,13 @@ export async function ensureEffectiveTenantPlanForUser<T extends TenantPlanInput
   role?: TenantRole
 ): Promise<T & { plan: Plan }> {
   const effectivePlan = effectivePlanForUser(tenant, user, role)
-  if (effectivePlan !== tenant.plan) {
-    await db
-      .update(tenants)
-      .set({ plan: effectivePlan })
-      .where(eq(tenants.id, tenant.id))
+  if (effectivePlan !== tenant.plan && user) {
+    await changeOrganizationPlan({
+      tenantId: tenant.id,
+      nextPlan: effectivePlan,
+      actorUserId: user.id,
+      reason: 'platform_admin_effective_plan',
+    })
   }
   return { ...tenant, plan: effectivePlan }
 }

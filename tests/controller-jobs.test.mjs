@@ -57,6 +57,7 @@ test('controller job API enforces tenant roles, provider ownership, and plan lim
   assert.match(listRoute, /requireTenantAccess\(request, slug, 'viewer'\)/)
   assert.match(listRoute, /requireTenantAccess\(request, slug, 'admin'\)/)
   assert.match(listRoute, /eq\(controllerJobs\.tenantId, access\.tenant\.id\)/)
+  assert.match(listRoute, /sanitizeControllerJob/)
   assert.match(listRoute, /pg_advisory_xact_lock/)
   assert.match(listRoute, /canCreateControllerJob\(access\.tenant\.plan/)
   assert.match(listRoute, /providerIdForControllerJob/)
@@ -67,6 +68,8 @@ test('controller job API enforces tenant roles, provider ownership, and plan lim
   assert.match(detailRoute, /requireTenantAccess\(request, slug, 'admin'\)/)
   assert.match(detailRoute, /and\(eq\(controllerJobs\.id, id\), eq\(controllerJobs\.tenantId, access\.tenant\.id\)\)/)
   assert.match(detailRoute, /controllerJobWriteSchema\.parse/)
+  assert.match(detailRoute, /canCreateControllerJob\(access\.tenant\.plan, 0\)/)
+  assert.match(detailRoute, /sanitizeControllerJob/)
   assert.match(detailRoute, /providerIdForControllerJob/)
   assert.match(detailRoute, /tenantProviders\.tenantId, access\.tenant\.id/)
 
@@ -125,6 +128,9 @@ test('controller scheduler claims due jobs and records provider evaluations', ()
   assert.match(controller, /dateFromDb\(job\.lastAlertedAt\)/)
   assert.match(controller, /dateFromDb\(job\.alertStartedAt\)/)
   assert.match(controller, /lease_expires_at/)
+  assert.match(controller, /INNER JOIN tenants ON tenants\.id = controller_jobs\.tenant_id/)
+  assert.match(controller, /tenants\.plan <> 'free'/)
+  assert.match(controller, /releaseControllerJobLease/)
   assert.match(controller, /finishControllerJob/)
   assert.match(controller, /lastStatus: result\.status/)
   assert.match(controller, /lastResult: result/)
@@ -172,6 +178,10 @@ test('controller scheduler records and delivers cooldown-aware state transitions
   assert.match(notifications, /sendSlackAlert/)
   assert.match(notifications, /sendTelegramAlert/)
   assert.match(baselines, /sendTenantAlertNotifications/)
+
+  const response = read('src/lib/controller-job-response.ts')
+  assert.match(response, /sanitizeControllerJob/)
+  assert.match(response, /Health check request failed\./)
 })
 
 test('internal controller route requires a timing-safe secret and runs scheduler counts', () => {
