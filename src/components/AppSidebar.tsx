@@ -17,6 +17,8 @@ import {
   Building2,
 } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
+import { limitsFor } from '@/lib/plan-limits'
+import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { PaletteToggle } from '@/components/PaletteToggle'
 import {
@@ -33,13 +35,63 @@ type OrganizationOption = {
   role: string
 }
 
+function SidebarUsageMeter({
+  slug,
+  monthlyUsage,
+  plan,
+  onNavigate,
+}: {
+  slug: string
+  monthlyUsage: number
+  plan?: string
+  onNavigate: () => void
+}) {
+  const limit = limitsFor(plan).externalEventsPerMonth
+  const percent =
+    limit === null ? 0 : Math.min(100, Math.round((monthlyUsage / limit) * 100))
+  const nearLimit = limit !== null && percent >= 80
+
+  return (
+    <Link
+      href={`/${slug}/settings`}
+      onClick={onNavigate}
+      title="Monthly external events. Open settings for details."
+      className="mx-2 mb-3 block rounded-md px-3 py-2 transition-colors hover:bg-sidebar-accent"
+    >
+      <div className="flex items-center justify-between text-xs text-sidebar-foreground/50">
+        <span>Usage</span>
+        <span className={cn(nearLimit && 'font-medium text-amber-500')}>
+          {monthlyUsage.toLocaleString()}
+          {limit !== null && ` / ${limit.toLocaleString()}`}
+        </span>
+      </div>
+      {limit !== null && (
+        <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-sidebar-accent">
+          <div
+            className={cn('h-full rounded-full bg-primary', nearLimit && 'bg-amber-500')}
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+      )}
+    </Link>
+  )
+}
+
 interface AppSidebarProps {
   slug: string
   authDisabled?: boolean
   organizations?: OrganizationOption[]
+  monthlyUsage?: number
+  plan?: string
 }
 
-export function AppSidebar({ slug, authDisabled = false, organizations = [] }: AppSidebarProps) {
+export function AppSidebar({
+  slug,
+  authDisabled = false,
+  organizations = [],
+  monthlyUsage,
+  plan,
+}: AppSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { data: session } = authClient.useSession()
@@ -221,6 +273,14 @@ export function AppSidebar({ slug, authDisabled = false, organizations = [] }: A
         )}
 
         <div className="mt-auto">
+          {typeof monthlyUsage === 'number' && (
+            <SidebarUsageMeter
+              slug={slug}
+              monthlyUsage={monthlyUsage}
+              plan={plan}
+              onNavigate={() => setMobileOpen(false)}
+            />
+          )}
           <Separator className="mb-3 bg-sidebar-border" />
           <PaletteToggle />
           {!authDisabled && (

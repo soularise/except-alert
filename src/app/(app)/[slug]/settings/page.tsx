@@ -109,11 +109,10 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="w-full max-w-4xl space-y-6" style={{ width: '960px', maxWidth: '100%' }}>
+    <div className="w-full space-y-6">
       <form
         onSubmit={handleSave}
-        className="w-full max-w-3xl space-y-6 rounded-md border bg-card p-4"
-        style={{ width: '760px', maxWidth: '100%' }}
+        className="w-full space-y-6 rounded-md border bg-card p-4"
       >
         <div>
           <h3 className="text-sm font-medium text-foreground">Notifications</h3>

@@ -290,7 +290,7 @@ export default function ControllerJobsPage() {
   }
 
   return (
-    <div className="w-full max-w-5xl space-y-8" style={{ width: '960px', maxWidth: '100%' }}>
+    <div className="w-full space-y-8">
       <div>
         <h2 className="text-sm font-semibold text-foreground">Controllers</h2>
         <p className="mt-1 text-sm text-muted-foreground">

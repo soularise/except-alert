@@ -2,7 +2,6 @@ import { count, eq, and, inArray, not } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { events, tenantProviders } from '@/lib/db/schema'
 import { getServerTenantId } from '@/lib/tenancy'
-import { getMonthlyExternalEventUsage } from '@/lib/event-usage'
 import { DashboardClient } from '@/components/DashboardClient'
 import { PageHeader } from '@/components/PageHeader'
 
@@ -22,7 +21,6 @@ async function getDashboardCounts(tenantId: string) {
     criticalResult,
     totalResult,
     configuredProviderResult,
-    monthlyExternalEventCount,
   ] = await Promise.all([
     db
       .select({ value: count() })
@@ -48,7 +46,6 @@ async function getDashboardCounts(tenantId: string) {
       .from(tenantProviders)
       .where(eq(tenantProviders.tenantId, tenantId))
       .then(([result]) => result),
-    getMonthlyExternalEventUsage(tenantId),
   ])
 
   return {
@@ -56,7 +53,6 @@ async function getDashboardCounts(tenantId: string) {
     criticalCount: criticalResult?.value ?? 0,
     totalEventCount: totalResult?.value ?? 0,
     configuredProviderCount: configuredProviderResult?.value ?? 0,
-    monthlyExternalEventCount,
   }
 }
 
@@ -76,7 +72,6 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
     criticalCount,
     totalEventCount,
     configuredProviderCount,
-    monthlyExternalEventCount,
   } = tenantId
     ? await getDashboardCounts(tenantId)
     : {
@@ -84,7 +79,6 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
         criticalCount: 0,
         totalEventCount: 0,
         configuredProviderCount: 0,
-        monthlyExternalEventCount: 0,
       }
 
   return (
@@ -97,7 +91,6 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
           criticalCount={criticalCount}
           totalEventCount={totalEventCount}
           configuredProviderCount={configuredProviderCount}
-          monthlyExternalEventCount={monthlyExternalEventCount}
         />
       </div>
     </div>

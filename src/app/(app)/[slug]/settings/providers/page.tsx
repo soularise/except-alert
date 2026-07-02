@@ -157,7 +157,7 @@ export default function ProvidersPage() {
   }
 
   return (
-    <div className="w-full max-w-5xl space-y-3" style={{ width: '960px', maxWidth: '100%' }}>
+    <div className="w-full space-y-3">
       <div className="mb-4">
         <h2 className="text-sm font-semibold text-foreground">Sources</h2>
         <p className="text-sm text-muted-foreground">

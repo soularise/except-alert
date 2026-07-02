@@ -9,6 +9,7 @@ import {
   getTenantsForUser,
 } from '@/lib/tenancy'
 import { ensureEffectiveTenantPlanForUser } from '@/lib/entitlements'
+import { getMonthlyExternalEventUsage } from '@/lib/event-usage'
 import { normalizeTenantRole } from '@/lib/tenant-access'
 import { TenantProvider } from '@/components/TenantProvider'
 import { AppSidebar } from '@/components/AppSidebar'
@@ -29,9 +30,10 @@ export default async function TenantLayout({
       .where(eq(tenants.id, DEFAULT_TENANT_ID))
       .limit(1)
     if (!tenant) notFound()
+    const monthlyUsage = await getMonthlyExternalEventUsage(tenant.id)
     return (
-      <div className="flex h-full">
-        <AppSidebar slug={slug} authDisabled />
+      <div className="flex h-full w-full">
+        <AppSidebar slug={slug} authDisabled monthlyUsage={monthlyUsage} plan={tenant.plan} />
         <main className="min-w-0 flex-1 overflow-y-auto pt-14 md:pt-0">
           <TenantProvider tenant={tenant} role="owner" authDisabled>
             {children}
@@ -56,10 +58,16 @@ export default async function TenantLayout({
     session.user,
     role
   )
+  const monthlyUsage = await getMonthlyExternalEventUsage(tenant.id)
 
   return (
-    <div className="flex h-full">
-      <AppSidebar slug={slug} organizations={organizations} />
+    <div className="flex h-full w-full">
+      <AppSidebar
+        slug={slug}
+        organizations={organizations}
+        monthlyUsage={monthlyUsage}
+        plan={tenant.plan}
+      />
       <main className="min-w-0 flex-1 overflow-y-auto pt-14 md:pt-0">
         <TenantProvider
           tenant={tenant}

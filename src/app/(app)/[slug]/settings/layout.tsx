@@ -19,9 +19,9 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   ]
 
   return (
-    <div className="flex h-full w-full flex-col" style={{ width: '100%' }}>
+    <div className="flex h-full w-full flex-col">
       <PageHeader title="Settings" />
-      <div className="overflow-x-auto border-b px-4 sm:px-6" style={{ width: '100%' }}>
+      <div className="overflow-x-auto border-b px-4 sm:px-6">
         <nav className="-mb-px flex min-w-max gap-6">
           {tabs.map(({ label, href }) => {
             const active = href === base
@@ -43,7 +43,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           })}
         </nav>
       </div>
-      <div className="w-full flex-1 overflow-auto px-4 py-6 sm:px-6" style={{ width: '100%' }}>
+      <div className="w-full flex-1 overflow-auto px-4 py-6 sm:px-6">
         {children}
       </div>
     </div>

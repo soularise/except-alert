@@ -61,23 +61,23 @@ export function EventCard({
   return (
     <Card
       className={cn(
-        'border-l-4 border-border/50 shadow-sm transition-shadow hover:shadow-md',
+        'border-l-4 border-border/50 py-2.5 shadow-sm transition-shadow hover:shadow-md',
         stripe
       )}
     >
-      <CardContent className="flex flex-col gap-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <CardContent className="flex flex-col gap-2 px-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <Link
             href={`/${slug}/dashboard/${event.id}`}
             className="min-w-0 flex-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <p className="text-sm font-semibold leading-snug text-foreground">{event.title}</p>
             {event.description && (
-              <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
+              <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
                 {event.description}
               </p>
             )}
-            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
                 <span className="inline-block size-1.5 rounded-full bg-muted-foreground/60" />
                 {event.source}
