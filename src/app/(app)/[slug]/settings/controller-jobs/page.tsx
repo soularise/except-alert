@@ -110,6 +110,10 @@ export default function ControllerJobsPage() {
     () => providers.filter((provider) => provider.configured),
     [providers]
   )
+  const scheduleDescription = useMemo(
+    () => describeCronSchedule(draft.cronExpr, draft.timezone),
+    [draft.cronExpr, draft.timezone]
+  )
 
   const loadControllerState = useCallback(async () => {
     setLoading(true)
@@ -502,7 +506,11 @@ export default function ControllerJobsPage() {
                 value={draft.cronExpr}
                 onChange={(event) => updateDraft('cronExpr', event.target.value)}
                 required
+                aria-describedby="controller-cron-help"
               />
+              <p id="controller-cron-help" className="text-xs leading-5 text-muted-foreground">
+                {scheduleDescription}
+              </p>
             </div>
 
             <div className="grid gap-2">
@@ -701,6 +709,70 @@ function formatResult(result: Record<string, unknown> | null) {
   const outcome = typeof result.outcome === 'string' ? result.outcome : 'unknown'
   const durationMs = typeof result.durationMs === 'number' ? `${result.durationMs}ms` : null
   return durationMs ? `${outcome} (${durationMs})` : outcome
+}
+
+function describeCronSchedule(cronExpr: string, timezone: string) {
+  const fields = cronExpr.trim().split(/\s+/)
+  if (fields.length !== 5 || fields.some((field) => field.length === 0)) {
+    return 'Use five cron fields: minute hour day month weekday.'
+  }
+
+  const [minute, hour, dayOfMonth, month, dayOfWeek] = fields
+  const zone = timezone.trim() || 'UTC'
+  const zoneSuffix = ` (${zone})`
+
+  if (dayOfMonth === '*' && month === '*' && dayOfWeek === '*') {
+    if (minute === '*' && hour === '*') return `Runs every minute${zoneSuffix}.`
+
+    const minuteStep = cronStep(minute)
+    if (minuteStep && hour === '*') {
+      return `Runs every ${minuteStep} minutes${zoneSuffix}.`
+    }
+
+    if (minute === '0' && hour === '*') return `Runs hourly at minute 00${zoneSuffix}.`
+
+    if (isCronNumber(minute, 0, 59) && isCronNumber(hour, 0, 23)) {
+      return `Runs daily at ${padCronNumber(hour)}:${padCronNumber(minute)}${zoneSuffix}.`
+    }
+  }
+
+  if (
+    isCronNumber(minute, 0, 59) &&
+    isCronNumber(hour, 0, 23) &&
+    dayOfMonth === '*' &&
+    month === '*' &&
+    (dayOfWeek === '1-5' || dayOfWeek === '1,2,3,4,5')
+  ) {
+    return `Runs every weekday at ${padCronNumber(hour)}:${padCronNumber(minute)}${zoneSuffix}.`
+  }
+
+  if (
+    isCronNumber(minute, 0, 59) &&
+    isCronNumber(hour, 0, 23) &&
+    isCronNumber(dayOfMonth, 1, 31) &&
+    month === '*' &&
+    dayOfWeek === '*'
+  ) {
+    return `Runs monthly on day ${Number(dayOfMonth)} at ${padCronNumber(hour)}:${padCronNumber(minute)}${zoneSuffix}.`
+  }
+
+  return `Custom cron: minute ${minute}, hour ${hour}, day ${dayOfMonth}, month ${month}, weekday ${dayOfWeek}${zoneSuffix}.`
+}
+
+function cronStep(field: string) {
+  const match = field.match(/^\*\/(\d+)$/)
+  if (!match) return null
+  const value = Number(match[1])
+  return Number.isInteger(value) && value > 0 && value <= 59 ? value : null
+}
+
+function isCronNumber(value: string, min: number, max: number) {
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed >= min && parsed <= max
+}
+
+function padCronNumber(value: string) {
+  return String(Number(value)).padStart(2, '0')
 }
 
 function jobToDraft(job: ControllerJob): JobDraft {
