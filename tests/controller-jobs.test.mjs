@@ -80,9 +80,13 @@ test('controller job API enforces tenant roles, provider ownership, and plan lim
 
 test('controller job settings UI exposes plan-aware management', () => {
   const settingsLayout = read('src/app/(app)/[slug]/settings/layout.tsx')
+  const sidebar = read('src/components/AppSidebar.tsx')
   const page = read('src/app/(app)/[slug]/settings/controller-jobs/page.tsx')
 
-  assert.match(settingsLayout, /Controllers/)
+  assert.match(settingsLayout, /promotedPages/)
+  assert.match(settingsLayout, /\[`\$\{base\}\/controller-jobs`\]: 'Controllers'/)
+  assert.match(settingsLayout, /PageHeader title=\{promotedTitle \?\? 'Settings'\}/)
+  assert.match(sidebar, /label: 'Controllers'/)
   assert.match(settingsLayout, /controller-jobs/)
   assert.match(page, /fetch\(`\/api\/\$\{tenant\.slug\}\/controller-jobs`\)/)
   assert.match(page, /fetch\(`\/api\/\$\{tenant\.slug\}\/providers`\)/)

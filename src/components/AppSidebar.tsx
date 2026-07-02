@@ -1,5 +1,6 @@
 'use client'
 
+import type { ComponentType } from 'react'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -7,6 +8,8 @@ import {
   LayoutDashboard,
   FileCode2,
   BarChart2,
+  Activity,
+  PlugZap,
   Settings,
   LogOut,
   Menu,
@@ -36,15 +39,11 @@ type OrganizationOption = {
 }
 
 function SidebarUsageMeter({
-  slug,
   monthlyUsage,
   plan,
-  onNavigate,
 }: {
-  slug: string
   monthlyUsage: number
   plan?: string
-  onNavigate: () => void
 }) {
   const limit = limitsFor(plan).externalEventsPerMonth
   const percent =
@@ -52,11 +51,9 @@ function SidebarUsageMeter({
   const nearLimit = limit !== null && percent >= 80
 
   return (
-    <Link
-      href={`/${slug}/settings`}
-      onClick={onNavigate}
-      title="Monthly external events. Open settings for details."
-      className="mx-2 mb-3 block rounded-md px-3 py-2 transition-colors hover:bg-sidebar-accent"
+    <div
+      title="Monthly external events."
+      className="mx-2 mb-3 rounded-md px-3 py-2"
     >
       <div className="flex items-center justify-between text-xs text-sidebar-foreground/50">
         <span>Usage</span>
@@ -73,7 +70,7 @@ function SidebarUsageMeter({
           />
         </div>
       )}
-    </Link>
+    </div>
   )
 }
 
@@ -102,14 +99,21 @@ export function AppSidebar({
   const userEmail = authDisabled ? null : session?.user.email
   const userLabel = userName || userEmail || null
 
-  const navItems = [
-    { label: 'Events',    href: `${base}/dashboard`,  icon: LayoutDashboard },
-    { label: 'Actions',   href: `${base}/templates`,  icon: FileCode2 },
-    { label: 'Alert Rules', href: `${base}/baselines`,  icon: BarChart2 },
-    { label: 'Settings',  href: `${base}/settings`,   icon: Settings },
+  const navItems: Array<{
+    label: string
+    href: string
+    icon: ComponentType<{ className?: string }>
+    active?: 'exact' | 'prefix' | 'settings'
+  }> = [
+    { label: 'Events', href: `${base}/dashboard`, icon: LayoutDashboard },
+    { label: 'Sources', href: `${base}/settings/providers`, icon: PlugZap },
+    { label: 'Controllers', href: `${base}/settings/controller-jobs`, icon: Activity },
+    { label: 'Actions', href: `${base}/templates`, icon: FileCode2 },
+    { label: 'Alert Rules', href: `${base}/baselines`, icon: BarChart2 },
+    { label: 'Settings', href: `${base}/settings`, icon: Settings, active: 'settings' },
   ]
 
-  function isActive(href: string) {
+  function isActive(href: string, mode: 'exact' | 'prefix' | 'settings' = 'prefix') {
     if (href === '/admin/provision') return pathname === href
 
     if (href === `${base}/dashboard`) {
@@ -121,6 +125,16 @@ export function AppSidebar({
           !pathname.includes('/settings'))
       )
     }
+
+    if (mode === 'exact') return pathname === href
+    if (mode === 'settings') {
+      return (
+        pathname === `${base}/settings` ||
+        pathname.startsWith(`${base}/settings/team`) ||
+        pathname.startsWith(`${base}/settings/account`)
+      )
+    }
+
     return pathname.startsWith(href)
   }
 
@@ -235,13 +249,13 @@ export function AppSidebar({
           <p className="mb-1 px-3 text-xs font-medium uppercase tracking-widest text-sidebar-foreground/30">
             Navigation
           </p>
-          {navItems.map(({ label, href, icon: Icon }) => (
+          {navItems.map(({ label, href, icon: Icon, active }) => (
             <Link
               key={href}
               href={href}
               onClick={() => setMobileOpen(false)}
               className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
-                isActive(href)
+                isActive(href, active)
                   ? 'bg-primary/10 text-primary'
                   : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'
               }`}
@@ -275,10 +289,8 @@ export function AppSidebar({
         <div className="mt-auto">
           {typeof monthlyUsage === 'number' && (
             <SidebarUsageMeter
-              slug={slug}
               monthlyUsage={monthlyUsage}
               plan={plan}
-              onNavigate={() => setMobileOpen(false)}
             />
           )}
           <Separator className="mb-3 bg-sidebar-border" />

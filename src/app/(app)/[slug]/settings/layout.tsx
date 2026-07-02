@@ -9,40 +9,45 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const { tenant } = useTenant()
   const pathname = usePathname()
   const base = `/${tenant.slug}/settings`
+  const promotedPages: Record<string, string> = {
+    [`${base}/providers`]: 'Sources',
+    [`${base}/controller-jobs`]: 'Controllers',
+  }
+  const promotedTitle = promotedPages[pathname]
 
   const tabs = [
     { label: 'Notifications', href: base },
-    { label: 'Sources',       href: `${base}/providers` },
-    { label: 'Controllers',    href: `${base}/controller-jobs` },
     { label: 'Team',          href: `${base}/team` },
     { label: 'Account',       href: `${base}/account` },
   ]
 
   return (
     <div className="flex h-full w-full flex-col">
-      <PageHeader title="Settings" />
-      <div className="overflow-x-auto border-b px-4 sm:px-6">
-        <nav className="-mb-px flex min-w-max gap-6">
-          {tabs.map(({ label, href }) => {
-            const active = href === base
-              ? pathname === base
-              : pathname.startsWith(href)
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={`py-3 text-sm border-b-2 transition-colors ${
-                  active
-                    ? 'border-primary text-foreground font-medium'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {label}
-              </Link>
-            )
-          })}
-        </nav>
-      </div>
+      <PageHeader title={promotedTitle ?? 'Settings'} />
+      {!promotedTitle && (
+        <div className="overflow-x-auto border-b px-4 sm:px-6">
+          <nav className="-mb-px flex min-w-max gap-6">
+            {tabs.map(({ label, href }) => {
+              const active = href === base
+                ? pathname === base
+                : pathname.startsWith(href)
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`py-3 text-sm border-b-2 transition-colors ${
+                    active
+                      ? 'border-primary text-foreground font-medium'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {label}
+                </Link>
+              )
+            })}
+          </nav>
+        </div>
+      )}
       <div className="w-full flex-1 overflow-auto px-4 py-6 sm:px-6">
         {children}
       </div>
