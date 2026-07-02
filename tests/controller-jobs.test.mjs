@@ -103,6 +103,7 @@ test('controller job settings UI exposes plan-aware management', () => {
   assert.match(page, /Save job/)
   assert.match(page, /Cancel/)
   assert.match(page, /formatResult\(job\.lastResult\)/)
+  assert.match(page, /max-w-\[260px\] truncate/)
   assert.match(page, /formatDate\(job\.lastRunAt\)/)
   assert.match(page, /job\.timezone/)
   assert.match(page, /controller-jobs\/\$\{job\.id\}\/trigger/)

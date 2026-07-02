@@ -359,13 +359,15 @@ export default function ControllerJobsPage() {
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDate(job.lastRunAt)}
                     </TableCell>
-                    <TableCell className="max-w-[180px] text-sm text-muted-foreground">
-                      {formatResult(job.lastResult)}
-                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
+                      <div className="max-w-[260px] truncate" title={formatResult(job.lastResult)}>
+                        {formatResult(job.lastResult)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                       {job.enabled ? formatDate(job.nextRunAt) : '-'}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       {canManage && (
                         <div className="flex justify-end gap-2">
                           <Button
