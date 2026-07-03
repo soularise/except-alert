@@ -8,6 +8,8 @@ import { canUseChannel } from '@/lib/plan-limits'
 const NOTIFICATION_KEYS = [
   'slack_webhook_url',
   'slack_notify_on_event',
+  'teams_webhook_url',
+  'teams_notify_on_event',
   'telegram_bot_token',
   'telegram_chat_id',
   'telegram_notify_on_event',
@@ -40,6 +42,8 @@ export async function GET(
     return NextResponse.json({
       slack_webhook_url: values['slack_webhook_url'] ?? null,
       slack_notify_on_event: settingEnabled(values['slack_notify_on_event']),
+      teams_webhook_url: values['teams_webhook_url'] ?? null,
+      teams_notify_on_event: settingEnabled(values['teams_notify_on_event']),
       telegram_bot_token: values['telegram_bot_token'] ?? null,
       telegram_chat_id: values['telegram_chat_id'] ?? null,
       telegram_notify_on_event: settingEnabled(values['telegram_notify_on_event']),
@@ -69,6 +73,10 @@ export async function PATCH(
     const val = (body as Record<string, unknown>)[key]
     if (key.startsWith('slack_') && !canUseChannel(access.tenant.plan, 'slack')) {
       if (key === 'slack_notify_on_event') updates.push({ key, value: 'false' })
+      continue
+    }
+    if (key.startsWith('teams_') && !canUseChannel(access.tenant.plan, 'teams')) {
+      if (key === 'teams_notify_on_event') updates.push({ key, value: 'false' })
       continue
     }
     if (typeof val === 'boolean') {

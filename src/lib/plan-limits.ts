@@ -1,6 +1,6 @@
 export type Plan = 'free' | 'pro' | 'growth'
 
-export type DeliveryChannel = 'dashboard' | 'telegram' | 'slack'
+export type DeliveryChannel = 'dashboard' | 'telegram' | 'slack' | 'teams'
 
 export type PlanLimits = {
   members: number | null
@@ -23,14 +23,14 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
     providers: 5,
     externalEventsPerMonth: 5_000,
     controllerJobs: 5,
-    channels: ['dashboard', 'telegram', 'slack'],
+    channels: ['dashboard', 'telegram', 'slack', 'teams'],
   },
   growth: {
     members: null,
     providers: null,
     externalEventsPerMonth: 50_000,
     controllerJobs: null,
-    channels: ['dashboard', 'telegram', 'slack'],
+    channels: ['dashboard', 'telegram', 'slack', 'teams'],
   },
 }
 

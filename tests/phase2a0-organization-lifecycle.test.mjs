@@ -49,6 +49,9 @@ test('providers and invitations enforce plan limits server-side', () => {
 
   assert.match(planLimits, /free:[\s\S]*members: 1/)
   assert.match(planLimits, /free:[\s\S]*providers: 1/)
+  assert.match(planLimits, /free:[\s\S]*channels: \['dashboard', 'telegram'\]/)
+  assert.match(planLimits, /pro:[\s\S]*channels: \['dashboard', 'telegram', 'slack', 'teams'\]/)
+  assert.match(planLimits, /growth:[\s\S]*channels: \['dashboard', 'telegram', 'slack', 'teams'\]/)
   assert.match(providerRoute, /canConfigureProvider\(access\.tenant\.plan, configuredProviders\)/)
   assert.match(providerRoute, /pg_advisory_xact_lock/)
   assert.match(inviteRoute, /canInviteMember\(access\.tenant\.plan, occupiedSeats\)/)

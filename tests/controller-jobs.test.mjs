@@ -184,7 +184,9 @@ test('controller scheduler records and delivers cooldown-aware state transitions
   assert.match(controller, /lastAlertedAt: shouldNotify \? now : job\.lastAlertedAt/)
   assert.match(controller, /controllerJobId: job\.id/)
   assert.match(notifications, /canUseChannel\(tenant\.plan, 'slack'\)/)
+  assert.match(notifications, /canUseChannel\(tenant\.plan, 'teams'\)/)
   assert.match(notifications, /sendSlackAlert/)
+  assert.match(notifications, /sendTeamsAlert/)
   assert.match(notifications, /sendTelegramAlert/)
   assert.match(baselines, /sendTenantAlertNotifications/)
 

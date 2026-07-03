@@ -3,10 +3,12 @@ import { db } from '@/lib/db'
 import { settings, tenants } from '@/lib/db/schema'
 import { canUseChannel } from '@/lib/plan-limits'
 import { sendSlackAlert } from '@/lib/slack'
+import { sendTeamsAlert } from '@/lib/teams'
 import { sendTelegramAlert } from '@/lib/telegram'
 
 const ALERT_SETTING_KEYS = [
   'slack_webhook_url',
+  'teams_webhook_url',
   'telegram_bot_token',
   'telegram_chat_id',
 ] as const
@@ -52,6 +54,7 @@ export async function sendTenantAlertNotifications(
 
   const values = Object.fromEntries(rows.map((row) => [row.key, row.value]))
   const slackUrl = values['slack_webhook_url'] ?? null
+  const teamsUrl = values['teams_webhook_url'] ?? null
   const telegramToken = values['telegram_bot_token'] ?? null
   const telegramChatId = values['telegram_chat_id'] ?? null
 
@@ -70,6 +73,23 @@ export async function sendTenantAlertNotifications(
     result.skipped.push('slack_plan_blocked')
   } else {
     result.skipped.push('slack_not_configured')
+  }
+
+  if (teamsUrl && canUseChannel(tenant.plan, 'teams')) {
+    result.attempted.push('teams')
+    try {
+      await sendTeamsAlert(teamsUrl, message)
+      result.delivered.push('teams')
+    } catch (err) {
+      result.failed.push({
+        channel: 'teams',
+        message: err instanceof Error ? err.message : 'Unknown Teams delivery error',
+      })
+    }
+  } else if (teamsUrl) {
+    result.skipped.push('teams_plan_blocked')
+  } else {
+    result.skipped.push('teams_not_configured')
   }
 
   if (telegramToken && telegramChatId && canUseChannel(tenant.plan, 'telegram')) {

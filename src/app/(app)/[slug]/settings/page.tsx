@@ -13,19 +13,24 @@ export default function SettingsPage() {
   const { tenant, role } = useTenant()
   const [slackUrl, setSlackUrl] = useState('')
   const [slackNotifyOnEvent, setSlackNotifyOnEvent] = useState(false)
+  const [teamsUrl, setTeamsUrl] = useState('')
+  const [teamsNotifyOnEvent, setTeamsNotifyOnEvent] = useState(false)
   const [telegramToken, setTelegramToken] = useState('')
   const [telegramChatId, setTelegramChatId] = useState('')
   const [telegramNotifyOnEvent, setTelegramNotifyOnEvent] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testingSlack, setTestingSlack] = useState(false)
+  const [testingTeams, setTestingTeams] = useState(false)
   const [testingTelegram, setTestingTelegram] = useState(false)
   const [telegramGuideOpen, setTelegramGuideOpen] = useState(false)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const [slackTestMessage, setSlackTestMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const [teamsTestMessage, setTeamsTestMessage] = useState<{ ok: boolean; text: string } | null>(null)
   const [telegramTestMessage, setTelegramTestMessage] = useState<{ ok: boolean; text: string } | null>(null)
   const canManageSettings = role === 'owner' || role === 'admin'
   const canUseSlack = canUseChannel(tenant.plan, 'slack')
+  const canUseTeams = canUseChannel(tenant.plan, 'teams')
 
   useEffect(() => {
     fetch(`/api/${tenant.slug}/settings`)
@@ -33,6 +38,8 @@ export default function SettingsPage() {
       .then((data) => {
         setSlackUrl(data.slack_webhook_url ?? '')
         setSlackNotifyOnEvent(Boolean(data.slack_notify_on_event))
+        setTeamsUrl(data.teams_webhook_url ?? '')
+        setTeamsNotifyOnEvent(Boolean(data.teams_notify_on_event))
         setTelegramToken(data.telegram_bot_token ?? '')
         setTelegramChatId(data.telegram_chat_id ?? '')
         setTelegramNotifyOnEvent(Boolean(data.telegram_notify_on_event))
@@ -45,6 +52,7 @@ export default function SettingsPage() {
     setSaving(true)
     setSaveMessage(null)
     setSlackTestMessage(null)
+    setTeamsTestMessage(null)
     setTelegramTestMessage(null)
     try {
       const res = await fetch(`/api/${tenant.slug}/settings`, {
@@ -53,6 +61,8 @@ export default function SettingsPage() {
         body: JSON.stringify({
           slack_webhook_url: slackUrl,
           slack_notify_on_event: canUseSlack ? slackNotifyOnEvent : false,
+          teams_webhook_url: teamsUrl,
+          teams_notify_on_event: canUseTeams ? teamsNotifyOnEvent : false,
           telegram_bot_token: telegramToken,
           telegram_chat_id: telegramChatId,
           telegram_notify_on_event: telegramNotifyOnEvent,
@@ -81,6 +91,26 @@ export default function SettingsPage() {
       )
     } finally {
       setTestingSlack(false)
+    }
+  }
+
+  async function handleTestTeams() {
+    setTestingTeams(true)
+    setTeamsTestMessage(null)
+    try {
+      const res = await fetch(`/api/${tenant.slug}/settings/teams-test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teams_webhook_url: teamsUrl }),
+      })
+      const data = await res.json()
+      setTeamsTestMessage(
+        res.ok
+          ? { ok: true, text: 'Test message sent.' }
+          : { ok: false, text: data.error ?? 'Test failed.' }
+      )
+    } finally {
+      setTestingTeams(false)
     }
   }
 
@@ -164,6 +194,59 @@ export default function SettingsPage() {
             {slackTestMessage && (
               <p className={`text-sm ${slackTestMessage.ok ? 'text-green-600' : 'text-destructive'}`}>
                 {slackTestMessage.text}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <Separator />
+
+        <div className="space-y-4">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Microsoft Teams</h4>
+          {!canUseTeams && (
+            <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              Microsoft Teams delivery requires Pro or Growth. Dashboard and Telegram remain available on Free.
+            </p>
+          )}
+          <div className="space-y-2">
+            <Label htmlFor="teams-url">Webhook URL</Label>
+            <Input
+              id="teams-url"
+              type="url"
+              placeholder="https://..."
+              value={teamsUrl}
+              onChange={(e) => setTeamsUrl(e.target.value)}
+              disabled={!canManageSettings || !canUseTeams}
+            />
+            <p className="text-xs leading-5 text-muted-foreground">
+              Create a Teams Workflows webhook and paste the URL here. Legacy Incoming Webhook URLs are best-effort if they accept a simple text payload.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-border bg-background"
+                checked={canUseTeams && teamsNotifyOnEvent}
+                onChange={(e) => setTeamsNotifyOnEvent(e.target.checked)}
+                disabled={!canManageSettings || !canUseTeams}
+              />
+              Notify Microsoft Teams for every new event
+            </label>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={testingTeams || !teamsUrl.trim() || !canManageSettings || !canUseTeams}
+              onClick={handleTestTeams}
+            >
+              {testingTeams ? 'Sending...' : 'Send Test'}
+            </Button>
+            {teamsTestMessage && (
+              <p className={`text-sm ${teamsTestMessage.ok ? 'text-green-600' : 'text-destructive'}`}>
+                {teamsTestMessage.text}
               </p>
             )}
           </div>
