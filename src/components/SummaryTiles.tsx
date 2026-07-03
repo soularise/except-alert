@@ -2,11 +2,25 @@ interface SummaryTilesProps {
   openCount: number
   criticalCount: number
   recentCount: number
+  currentMonthlyExternalEventCount: number
+  externalEventsPerMonth: number | null
+  monthlyUsageLabel: string
 }
 
-export function SummaryTiles({ openCount, criticalCount, recentCount }: SummaryTilesProps) {
+export function SummaryTiles({
+  openCount,
+  criticalCount,
+  recentCount,
+  currentMonthlyExternalEventCount,
+  externalEventsPerMonth,
+  monthlyUsageLabel,
+}: SummaryTilesProps) {
+  const monthlyUsage = externalEventsPerMonth === null
+    ? currentMonthlyExternalEventCount.toLocaleString()
+    : `${currentMonthlyExternalEventCount.toLocaleString()} / ${externalEventsPerMonth.toLocaleString()}`
+
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <div className="rounded-xl border border-border/50 border-l-4 border-l-primary bg-card shadow-sm p-4">
         <p className="text-3xl font-bold text-foreground">{openCount}</p>
         <p className="text-sm text-muted-foreground mt-1">Open Events</p>
@@ -20,6 +34,10 @@ export function SummaryTiles({ openCount, criticalCount, recentCount }: SummaryT
       <div className="rounded-xl border border-border/50 border-l-4 border-l-amber-500 bg-card shadow-sm p-4">
         <p className="text-3xl font-bold text-foreground">{recentCount}</p>
         <p className="text-sm text-muted-foreground mt-1">Last 60s</p>
+      </div>
+      <div className="rounded-xl border border-border/50 border-l-4 border-l-blue-600 bg-card shadow-sm p-4">
+        <p className="text-3xl font-bold text-foreground">{monthlyUsage}</p>
+        <p className="text-sm text-muted-foreground mt-1">{monthlyUsageLabel}</p>
       </div>
     </div>
   )
