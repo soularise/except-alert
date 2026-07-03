@@ -7,7 +7,6 @@ import { FilterBar, type Filters } from '@/components/FilterBar'
 import { EventTimeline } from '@/components/EventTimeline'
 import { SummaryTiles } from '@/components/SummaryTiles'
 import { useTenant } from '@/components/TenantProvider'
-import { limitsFor } from '@/lib/plan-limits'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -18,6 +17,7 @@ interface DashboardClientProps {
   totalEventCount: number
   configuredProviderCount: number
   currentMonthlyExternalEventCount: number
+  externalEventsPerMonth: number | null
 }
 
 export function DashboardClient({
@@ -27,14 +27,15 @@ export function DashboardClient({
   totalEventCount,
   configuredProviderCount,
   currentMonthlyExternalEventCount,
+  externalEventsPerMonth: initialExternalEventsPerMonth,
 }: DashboardClientProps) {
-  const { tenant } = useTenant()
   const [recentCount, setRecentCount] = useState<number>(0)
   const [monthlyExternalEventCount, setMonthlyExternalEventCount] = useState<number>(
     currentMonthlyExternalEventCount
   )
-  const externalEventsPerMonth = limitsFor(tenant.plan).externalEventsPerMonth
-  const monthlyUsageLabel = 'Monthly usage'
+  const [externalEventsPerMonth, setExternalEventsPerMonth] = useState<number | null>(
+    initialExternalEventsPerMonth
+  )
   const filtersKey = JSON.stringify(initialFilters)
   const showActivationPanel = totalEventCount === 0
 
@@ -46,7 +47,6 @@ export function DashboardClient({
         recentCount={recentCount}
         currentMonthlyExternalEventCount={monthlyExternalEventCount}
         externalEventsPerMonth={externalEventsPerMonth}
-        monthlyUsageLabel={monthlyUsageLabel}
       />
       {showActivationPanel && (
         <DashboardActivationPanel configuredProviderCount={configuredProviderCount} />
@@ -57,6 +57,7 @@ export function DashboardClient({
         filters={initialFilters}
         onRecentCount={setRecentCount}
         onMonthlyExternalEventCount={setMonthlyExternalEventCount}
+        onMonthlyEventLimit={setExternalEventsPerMonth}
         suppressEmptyState={showActivationPanel}
       />
     </div>

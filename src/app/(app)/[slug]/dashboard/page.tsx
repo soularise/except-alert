@@ -1,7 +1,8 @@
 import { count, eq, and, inArray, not } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { events, tenantProviders } from '@/lib/db/schema'
+import { events, tenantProviders, tenants } from '@/lib/db/schema'
 import { getMonthlyExternalEventUsage } from '@/lib/event-usage'
+import { limitsFor } from '@/lib/plan-limits'
 import { getServerTenantId } from '@/lib/tenancy'
 import { DashboardClient } from '@/components/DashboardClient'
 import { PageHeader } from '@/components/PageHeader'
@@ -22,6 +23,7 @@ async function getDashboardCounts(tenantId: string) {
     criticalResult,
     totalResult,
     configuredProviderResult,
+    tenantResult,
     monthlyExternalEventUsage,
   ] = await Promise.all([
     db
@@ -48,8 +50,15 @@ async function getDashboardCounts(tenantId: string) {
       .from(tenantProviders)
       .where(eq(tenantProviders.tenantId, tenantId))
       .then(([result]) => result),
+    db
+      .select({ plan: tenants.plan })
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .then(([result]) => result),
     getMonthlyExternalEventUsage(tenantId),
   ])
+
+  const externalEventsPerMonth = limitsFor(tenantResult?.plan).externalEventsPerMonth
 
   return {
     openCount: openResult?.value ?? 0,
@@ -57,6 +66,7 @@ async function getDashboardCounts(tenantId: string) {
     totalEventCount: totalResult?.value ?? 0,
     configuredProviderCount: configuredProviderResult?.value ?? 0,
     currentMonthlyExternalEventCount: monthlyExternalEventUsage,
+    externalEventsPerMonth,
   }
 }
 
@@ -77,6 +87,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
     totalEventCount,
     configuredProviderCount,
     currentMonthlyExternalEventCount,
+    externalEventsPerMonth,
   } = tenantId
     ? await getDashboardCounts(tenantId)
     : {
@@ -85,6 +96,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
         totalEventCount: 0,
         configuredProviderCount: 0,
         currentMonthlyExternalEventCount: 0,
+        externalEventsPerMonth: limitsFor(null).externalEventsPerMonth,
       }
 
   return (
@@ -98,6 +110,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
           totalEventCount={totalEventCount}
           configuredProviderCount={configuredProviderCount}
           currentMonthlyExternalEventCount={currentMonthlyExternalEventCount}
+          externalEventsPerMonth={externalEventsPerMonth}
         />
       </div>
     </div>

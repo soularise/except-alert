@@ -4,7 +4,6 @@ interface SummaryTilesProps {
   recentCount: number
   currentMonthlyExternalEventCount: number
   externalEventsPerMonth: number | null
-  monthlyUsageLabel: string
 }
 
 export function SummaryTiles({
@@ -13,7 +12,6 @@ export function SummaryTiles({
   recentCount,
   currentMonthlyExternalEventCount,
   externalEventsPerMonth,
-  monthlyUsageLabel,
 }: SummaryTilesProps) {
   const monthlyUsage = externalEventsPerMonth === null
     ? currentMonthlyExternalEventCount.toLocaleString()
@@ -37,7 +35,7 @@ export function SummaryTiles({
       </div>
       <div className="rounded-xl border border-border/50 border-l-4 border-l-blue-600 bg-card shadow-sm p-4">
         <p className="text-3xl font-bold text-foreground">{monthlyUsage}</p>
-        <p className="text-sm text-muted-foreground mt-1">{monthlyUsageLabel}</p>
+        <p className="text-sm text-muted-foreground mt-1">Monthly usage</p>
       </div>
     </div>
   )

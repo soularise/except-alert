@@ -12,6 +12,7 @@ function read(path) {
 test('new Free organizations get a dashboard activation path', () => {
   const dashboardPage = read('src/app/(app)/[slug]/dashboard/page.tsx')
   const dashboardClient = read('src/components/DashboardClient.tsx')
+  const summaryTiles = read('src/components/SummaryTiles.tsx')
   const usage = read('src/lib/event-usage.ts')
   const eventsRoute = read('src/app/api/[slug]/events/route.ts')
   const eventTimeline = read('src/components/EventTimeline.tsx')
@@ -22,7 +23,7 @@ test('new Free organizations get a dashboard activation path', () => {
   assert.match(dashboardPage, /configuredProviderCount/)
   assert.match(dashboardPage, /totalEventCount/)
   assert.match(dashboardPage, /getMonthlyExternalEventUsage\(tenantId\)/)
-  assert.match(dashboardClient, /Monthly usage/)
+  assert.match(summaryTiles, /Monthly usage/)
   assert.match(dashboardClient, /externalEventsPerMonth/)
   assert.match(dashboardClient, /currentMonthlyExternalEventCount/)
   assert.match(dashboardClient, /onMonthlyExternalEventCount/)

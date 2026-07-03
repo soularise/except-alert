@@ -19,12 +19,14 @@ interface ApiResponse {
   totalCount: number
   recentCount: number
   monthlyExternalEventCount: number
+  monthlyEventLimit: number | null
 }
 
 interface EventTimelineProps {
   filters: Filters
   onRecentCount?: (count: number) => void
   onMonthlyExternalEventCount?: (count: number) => void
+  onMonthlyEventLimit?: (limit: number | null) => void
   suppressEmptyState?: boolean
 }
 
@@ -46,6 +48,7 @@ export function EventTimeline({
   filters,
   onRecentCount,
   onMonthlyExternalEventCount,
+  onMonthlyEventLimit,
   suppressEmptyState = false,
 }: EventTimelineProps) {
   const { tenant } = useTenant()
@@ -67,13 +70,14 @@ export function EventTimeline({
       setTotalCount(data.totalCount)
       onRecentCount?.(data.recentCount)
       onMonthlyExternalEventCount?.(data.monthlyExternalEventCount)
+      onMonthlyEventLimit?.(data.monthlyEventLimit)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
       setLoading(false)
     }
-  }, [filters, onMonthlyExternalEventCount, onRecentCount, page, pageSize, tenant.slug])
+  }, [filters, onMonthlyEventLimit, onMonthlyExternalEventCount, onRecentCount, page, pageSize, tenant.slug])
 
   const poll = useCallback(async () => {
     try {
@@ -82,13 +86,14 @@ export function EventTimeline({
       const data: ApiResponse = await res.json()
       onRecentCount?.(data.recentCount)
       onMonthlyExternalEventCount?.(data.monthlyExternalEventCount)
+      onMonthlyEventLimit?.(data.monthlyEventLimit)
       setTotalCount(data.totalCount)
       if (page === 1) {
         setEvents(data.events)
       }
     } catch {
     }
-  }, [filters, onMonthlyExternalEventCount, onRecentCount, page, pageSize, tenant.slug])
+  }, [filters, onMonthlyEventLimit, onMonthlyExternalEventCount, onRecentCount, page, pageSize, tenant.slug])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
