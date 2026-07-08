@@ -24,10 +24,38 @@ test('admin provisioning is discoverable to configured admins', () => {
 
   const sidebar = read('src/components/AppSidebar.tsx')
   assert.match(sidebar, /\/api\/admin\/status/)
+  assert.match(sidebar, /\/admin/)
   assert.match(sidebar, /\/admin\/provision/)
   assert.match(sidebar, /isPlatformAdmin/)
   assert.match(sidebar, /Platform/)
+  assert.match(sidebar, /Admin/)
   assert.match(sidebar, /Provision/)
+})
+
+test('grand admin usage dashboard is gated by platform admin identity', () => {
+  const page = read('src/app/admin/page.tsx')
+  assert.match(page, /isPlatformAdminEmail\(session\.user\.email\)/)
+  assert.match(page, /redirect\(`\/login\?returnTo=\$\{encodeURIComponent\('\/admin'\)\}`\)/)
+  assert.match(page, /notFound\(\)/)
+  assert.doesNotMatch(page, /requireTenantAccess/)
+  assert.doesNotMatch(page, /getTenantMembership/)
+})
+
+test('grand admin usage dashboard uses account and organization activity only', () => {
+  const page = read('src/app/admin/page.tsx')
+  assert.match(page, /authSession/)
+  assert.match(page, /tenantMemberships/)
+  assert.match(page, /tenantProviders/)
+  assert.match(page, /events/)
+  assert.match(page, /Last Login/)
+  assert.match(page, /Configured Sources/)
+  assert.match(page, /External Events/)
+  assert.doesNotMatch(page, /auditLog/)
+  assert.doesNotMatch(page, /rawPayload/)
+  assert.doesNotMatch(page, /errorInfo/)
+  assert.doesNotMatch(page, /ipAddress/)
+  assert.doesNotMatch(page, /userAgent/)
+  assert.doesNotMatch(page, /provider visibility/i)
 })
 
 test('sidebar shows the current signed-in user identity', () => {

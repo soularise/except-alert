@@ -18,6 +18,7 @@ import {
   User,
   UserPlus,
   Building2,
+  Gauge,
 } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { limitsFor } from '@/lib/plan-limits'
@@ -114,6 +115,7 @@ export function AppSidebar({
   ]
 
   function isActive(href: string, mode: 'exact' | 'prefix' | 'settings' = 'prefix') {
+    if (href === '/admin') return pathname === href
     if (href === '/admin/provision') return pathname === href
 
     if (href === `${base}/dashboard`) {
@@ -271,6 +273,18 @@ export function AppSidebar({
             <p className="mb-1 px-3 text-xs font-medium uppercase tracking-widest text-sidebar-foreground/30">
               Platform
             </p>
+            <Link
+              href="/admin"
+              onClick={() => setMobileOpen(false)}
+              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
+                isActive('/admin')
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+              }`}
+            >
+              <Gauge className="h-4 w-4 shrink-0" />
+              Admin
+            </Link>
             <Link
               href="/admin/provision"
               onClick={() => setMobileOpen(false)}
