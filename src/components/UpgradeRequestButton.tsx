@@ -82,9 +82,14 @@ export function UpgradeRequestButton({
           </div>
         </div>
       ) : (
-        <Button type="button" size="sm" onClick={() => setOpen(true)}>
-          {buttonLabel}
-        </Button>
+        <div className="space-y-1.5">
+          <Button type="button" size="sm" onClick={() => setOpen(true)}>
+            {buttonLabel}
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Upgrades are reviewed manually. We will send payment details before changing your plan.
+          </p>
+        </div>
       )}
       {message && <p className="text-sm text-primary">{message}</p>}
       {error && <p className="text-sm text-destructive">{error}</p>}

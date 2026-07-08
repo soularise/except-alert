@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { ArrowRight, CheckCircle2, Circle, PlugZap, Send } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Circle, CircleHelp, PlugZap, Send } from 'lucide-react'
 import { FilterBar, type Filters } from '@/components/FilterBar'
 import { EventTimeline } from '@/components/EventTimeline'
 import { SummaryTiles } from '@/components/SummaryTiles'
@@ -130,10 +130,11 @@ function DashboardActivationPanel({
             {hasSource ? 'Send Test Event' : 'Configure Source'}
           </Link>
           <Link
-            href={`/${tenant.slug}/settings/providers`}
+            href={`/${tenant.slug}/help`}
             className={buttonVariants({ variant: 'outline', size: 'sm' })}
           >
-            Sources
+            <CircleHelp data-icon="inline-start" />
+            Getting started
             <ArrowRight data-icon="inline-end" />
           </Link>
         </div>

@@ -19,6 +19,7 @@ import {
   UserPlus,
   Building2,
   Gauge,
+  CircleHelp,
 } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { limitsFor } from '@/lib/plan-limits'
@@ -111,6 +112,7 @@ export function AppSidebar({
     { label: 'Controllers', href: `${base}/settings/controller-jobs`, icon: Activity },
     { label: 'Actions', href: `${base}/templates`, icon: FileCode2 },
     { label: 'Alert Rules', href: `${base}/baselines`, icon: BarChart2 },
+    { label: 'Help', href: `${base}/help`, icon: CircleHelp },
     { label: 'Settings', href: `${base}/settings`, icon: Settings, active: 'settings' },
   ]
 
