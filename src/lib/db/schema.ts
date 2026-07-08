@@ -115,6 +115,32 @@ export const tenantPlanChanges = pgTable(
   (t) => [index('idx_tenant_plan_changes_tenant_created').on(t.tenantId, t.createdAt)]
 )
 
+export const upgradeRequests = pgTable(
+  'upgrade_requests',
+  {
+    id:              uuid('id').primaryKey().defaultRandom(),
+    tenantId:        uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    requesterUserId: text('requester_user_id').notNull().references(() => authUser.id, { onDelete: 'cascade' }),
+    currentPlan:     text('current_plan').notNull(),
+    requestedPlan:   text('requested_plan').notNull(),
+    status:          text('status').notNull().default('open'),
+    source:          text('source').notNull().default('manual'),
+    requestReason:   text('request_reason'),
+    adminNote:       text('admin_note'),
+    resolvedByUserId: text('resolved_by_user_id').references(() => authUser.id),
+    resolvedAt:      timestamptz('resolved_at'),
+    createdAt:       timestamptz('created_at').notNull().defaultNow(),
+    updatedAt:       timestamptz('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('idx_upgrade_requests_status_created').on(t.status, t.createdAt),
+    index('idx_upgrade_requests_tenant_created').on(t.tenantId, t.createdAt),
+    uniqueIndex('upgrade_requests_one_active_per_tenant')
+      .on(t.tenantId)
+      .where(sql`${t.status} IN ('open', 'payment_sent', 'paid')`),
+  ]
+)
+
 export const tenantMemberships = pgTable('tenant_memberships', {
   id:        uuid('id').primaryKey().defaultRandom(),
   userId:    text('user_id').notNull(),

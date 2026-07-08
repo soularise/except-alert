@@ -20,6 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useTenant } from '@/components/TenantProvider'
+import { UpgradeRequestButton } from '@/components/UpgradeRequestButton'
 import { limitsFor } from '@/lib/plan-limits'
 
 type Member = {
@@ -140,6 +141,11 @@ export default function TeamPage() {
           <p className="mt-1">
             Free workspaces are single-user. Upgrade to Pro when you are ready to invite teammates.
           </p>
+          <UpgradeRequestButton
+            slug={tenant.slug}
+            source="team_limit"
+            prompt="We want to invite teammates and need Pro."
+          />
         </div>
       ) : (
         <form

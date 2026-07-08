@@ -83,6 +83,8 @@ DATABASE_URL=postgres://relay:relay@localhost:5432/relay npm run dev
 | `CONTROLLER_BASE_URL` | No | Base URL used by `npm run controller:run`. Defaults to `EXCEPTALERT_APP_URL`, then `BETTER_AUTH_URL`, then `http://localhost:3000`. |
 | `EXCEPTALERT_PASSWORD_RESET_EVENT_TENANT_ID` | No | Tenant ID used for password reset event routing |
 | `EXCEPTALERT_PASSWORD_RESET_EVENT_TENANT_SLUG` | No | Tenant slug used for password reset event routing |
+| `EXCEPTALERT_ADMIN_TELEGRAM_BOT_TOKEN` | No | Telegram bot token for immediate platform-admin upgrade request notifications |
+| `EXCEPTALERT_ADMIN_TELEGRAM_CHAT_ID` | No | Telegram chat ID for immediate platform-admin upgrade request notifications |
 
 ## Migrations
 

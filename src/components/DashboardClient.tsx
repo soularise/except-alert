@@ -71,13 +71,16 @@ function DashboardActivationPanel({
 }) {
   const { tenant } = useTenant()
   const hasSource = configuredProviderCount > 0
+  const isFreePlan = tenant.plan === 'free'
   const steps = [
     {
       label: 'Create one source',
       done: hasSource,
       detail: hasSource
         ? 'A source is ready to receive webhooks.'
-        : 'Free workspaces include one configured source.',
+        : isFreePlan
+          ? 'Free workspaces include one configured source.'
+          : 'Create a source to start receiving webhooks.',
     },
     {
       label: 'Send a test event',
@@ -94,7 +97,9 @@ function DashboardActivationPanel({
         <div className="min-w-0 space-y-3">
           <div className="flex items-center gap-2">
             <PlugZap className="size-4 text-primary" />
-            <h2 className="text-sm font-semibold text-foreground">Finish Free setup</h2>
+            <h2 className="text-sm font-semibold text-foreground">
+              {isFreePlan ? 'Finish Free setup' : 'Finish setup'}
+            </h2>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             {steps.map((step) => {

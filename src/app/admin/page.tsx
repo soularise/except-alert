@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { and, count, desc, eq, gte, inArray, sql, type SQL } from 'drizzle-orm'
+import { AdminUpgradeRequestActions } from '@/components/AdminUpgradeRequestActions'
 import { AppSidebar } from '@/components/AppSidebar'
 import { Badge } from '@/components/ui/badge'
 import { isPlatformAdminEmail } from '@/lib/admin'
@@ -11,6 +12,7 @@ import {
   tenantMemberships,
   tenantProviders,
   tenants,
+  upgradeRequests,
 } from '@/lib/db/schema'
 import { getFirstTenantForUser, getServerSession } from '@/lib/tenancy'
 
@@ -58,6 +60,22 @@ type UserRow = {
   latestSessionActivity: Date | string | null
   memberships: string | null
   activeEventCount: number
+}
+
+type UpgradeRequestRow = {
+  id: string
+  tenantId: string
+  organizationName: string
+  organizationSlug: string
+  currentPlan: string
+  requestedPlan: string
+  status: string
+  source: string
+  requestReason: string | null
+  requesterName: string
+  requesterEmail: string
+  createdAt: Date | string
+  updatedAt: Date | string
 }
 
 type SummaryMetrics = {
@@ -254,6 +272,30 @@ async function getUserRows(since: Date | null, plan: PlanFilter): Promise<UserRo
     .orderBy(sql`MAX(${authSession.updatedAt}) DESC NULLS LAST`, desc(authUser.createdAt))
 }
 
+async function getUpgradeRequestRows(): Promise<UpgradeRequestRow[]> {
+  return db
+    .select({
+      id: upgradeRequests.id,
+      tenantId: upgradeRequests.tenantId,
+      organizationName: tenants.name,
+      organizationSlug: tenants.slug,
+      currentPlan: upgradeRequests.currentPlan,
+      requestedPlan: upgradeRequests.requestedPlan,
+      status: upgradeRequests.status,
+      source: upgradeRequests.source,
+      requestReason: upgradeRequests.requestReason,
+      requesterName: authUser.name,
+      requesterEmail: authUser.email,
+      createdAt: upgradeRequests.createdAt,
+      updatedAt: upgradeRequests.updatedAt,
+    })
+    .from(upgradeRequests)
+    .innerJoin(tenants, eq(upgradeRequests.tenantId, tenants.id))
+    .innerJoin(authUser, eq(upgradeRequests.requesterUserId, authUser.id))
+    .where(inArray(upgradeRequests.status, ['open', 'payment_sent', 'paid']))
+    .orderBy(desc(upgradeRequests.createdAt))
+}
+
 function FilterControls({
   timeframe,
   plan,
@@ -330,10 +372,11 @@ export default async function AdminUsagePage({
   const since = sinceFor(timeframe)
   const firstTenant = await getFirstTenantForUser(session.user.id)
 
-  const [summary, organizations, users] = await Promise.all([
+  const [summary, organizations, users, upgradeRequestRows] = await Promise.all([
     getSummaryMetrics(since, plan),
     getOrganizationRows(since, plan),
     getUserRows(since, plan),
+    getUpgradeRequestRows(),
   ])
 
   const content = (hasSidebar: boolean) => (
@@ -353,6 +396,69 @@ export default async function AdminUsagePage({
           </div>
           <FilterControls timeframe={timeframe} plan={plan} />
         </div>
+
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold tracking-tight">Upgrade Requests</h2>
+            <span className="text-sm text-muted-foreground">{upgradeRequestRows.length} open</span>
+          </div>
+          <div className="overflow-x-auto rounded-md border border-border/70 bg-card">
+            <table className="w-full min-w-[980px] text-left text-sm">
+              <thead className="border-b bg-muted/40 text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Organization</th>
+                  <th className="px-4 py-3 font-medium">Requester</th>
+                  <th className="px-4 py-3 font-medium">Plan</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">Reason</th>
+                  <th className="px-4 py-3 font-medium">Requested</th>
+                  <th className="px-4 py-3 text-right font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {upgradeRequestRows.map((request) => (
+                  <tr key={request.id} className="border-b last:border-0">
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-foreground">{request.organizationName}</p>
+                      <p className="text-xs text-muted-foreground">{request.organizationSlug}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="font-medium">{request.requesterName || request.requesterEmail}</p>
+                      <p className="text-xs text-muted-foreground">{request.requesterEmail}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="capitalize">{request.currentPlan}</span>
+                      <span className="px-1 text-muted-foreground">to</span>
+                      <span className="capitalize">{request.requestedPlan}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge variant={request.status === 'paid' ? 'default' : 'secondary'}>
+                        {request.status.replace('_', ' ')}
+                      </Badge>
+                    </td>
+                    <td className="max-w-sm px-4 py-3 text-muted-foreground">
+                      <p className="line-clamp-2">{request.requestReason ?? request.source}</p>
+                    </td>
+                    <td className="px-4 py-3">{formatDateTime(request.createdAt)}</td>
+                    <td className="px-4 py-3">
+                      <AdminUpgradeRequestActions
+                        requestId={request.id}
+                        status={request.status}
+                      />
+                    </td>
+                  </tr>
+                ))}
+                {upgradeRequestRows.length === 0 && (
+                  <tr>
+                    <td className="px-4 py-6 text-center text-muted-foreground" colSpan={7}>
+                      No open upgrade requests.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <MetricCard label="Organizations" value={summary.totalOrganizations} />

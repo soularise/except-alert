@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { useTenant } from '@/components/TenantProvider'
+import { UpgradeRequestButton } from '@/components/UpgradeRequestButton'
 
 type ProviderItem = {
   id: string
@@ -164,12 +165,21 @@ export default function ProvidersPage() {
           Connect webhook sources to ExceptAlert and copy their ingest URLs.
         </p>
         {providerLimit !== null && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Your plan includes {providerLimit} configured source{providerLimit === 1 ? '' : 's'}.
-            {atProviderLimit
-              ? ' Remove the current source before configuring a replacement.'
-              : ' Test events appear in the dashboard and do not count toward monthly usage.'}
-          </p>
+          <div className="mt-2 text-xs text-muted-foreground">
+            <p>
+              Your plan includes {providerLimit} configured source{providerLimit === 1 ? '' : 's'}.
+              {atProviderLimit
+                ? ' Request Pro when you are ready to monitor more sources.'
+                : ' Test events appear in the dashboard and do not count toward monthly usage.'}
+            </p>
+            {atProviderLimit && canManage && (
+              <UpgradeRequestButton
+                slug={tenant.slug}
+                source="source_limit"
+                prompt="We need Pro so we can connect more webhook sources."
+              />
+            )}
+          </div>
         )}
       </div>
 

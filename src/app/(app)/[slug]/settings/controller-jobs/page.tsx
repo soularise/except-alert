@@ -22,6 +22,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useTenant } from '@/components/TenantProvider'
+import { UpgradeRequestButton } from '@/components/UpgradeRequestButton'
 import { limitsFor } from '@/lib/plan-limits'
 
 type ControllerJobType = 'health_ping' | 'dead_letter' | 'cron_deadline' | 'deviation'
@@ -313,6 +314,13 @@ export default function ControllerJobsPage() {
         <div className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
           <p className="font-medium text-foreground">Active monitoring requires Pro or Growth.</p>
           <p className="mt-1">The dashboard remains available on Free.</p>
+          {canManage && (
+            <UpgradeRequestButton
+              slug={tenant.slug}
+              source="controller_jobs"
+              prompt="We want to use active monitoring and need Pro."
+            />
+          )}
         </div>
       )}
 
