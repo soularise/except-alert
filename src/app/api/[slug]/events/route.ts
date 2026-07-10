@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { and, count, desc, eq, gte, isNull, lt, not, or } from 'drizzle-orm'
+import { and, count, desc, eq, gte, ilike, isNull, lt, not, or } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { events } from '@/lib/db/schema'
 import { evaluateBaselines } from '@/lib/baselines'
@@ -9,6 +9,10 @@ import { limitsFor } from '@/lib/plan-limits'
 
 const VALID_SEVERITIES = new Set(['critical', 'error', 'warning', 'info'])
 const VALID_STATUSES = new Set(['open', 'acknowledged', 'resolved', 'dismissed'])
+
+function containsPattern(value: string) {
+  return `%${value.replace(/[\\%_]/g, '\\$&')}%`
+}
 
 export async function GET(
   request: NextRequest,
@@ -34,9 +38,9 @@ export async function GET(
 
   try {
     const conditions = [eq(events.tenantId, access.tenant.id)]
-    if (source) conditions.push(eq(events.source, source))
+    if (source) conditions.push(ilike(events.source, containsPattern(source)))
     if (severity && VALID_SEVERITIES.has(severity)) conditions.push(eq(events.severity, severity))
-    if (category) conditions.push(eq(events.category, category))
+    if (category) conditions.push(ilike(events.category, containsPattern(category)))
     if (status && VALID_STATUSES.has(status)) {
       conditions.push(eq(events.status, status))
     } else {

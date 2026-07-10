@@ -51,9 +51,9 @@ export function DashboardClient({
       {showActivationPanel && (
         <DashboardActivationPanel configuredProviderCount={configuredProviderCount} />
       )}
-      <FilterBar filters={initialFilters} />
+      <FilterBar key={`filters-${filtersKey}`} filters={initialFilters} />
       <EventTimeline
-        key={filtersKey}
+        key={`events-${filtersKey}`}
         filters={initialFilters}
         onRecentCount={setRecentCount}
         onMonthlyExternalEventCount={setMonthlyExternalEventCount}

@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
@@ -27,6 +28,23 @@ interface FilterBarProps {
 export function FilterBar({ filters }: FilterBarProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const [sourceInput, setSourceInput] = useState(filters.source ?? '')
+  const [categoryInput, setCategoryInput] = useState(filters.category ?? '')
+
+  useEffect(() => {
+    if (sourceInput === (filters.source ?? '') && categoryInput === (filters.category ?? '')) return
+
+    const timeout = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search)
+      if (sourceInput) params.set('source', sourceInput)
+      else params.delete('source')
+      if (categoryInput) params.set('category', categoryInput)
+      else params.delete('category')
+      router.push(`?${params.toString()}`)
+    }, 300)
+
+    return () => window.clearTimeout(timeout)
+  }, [categoryInput, filters.category, filters.source, router, searchParams, sourceInput])
 
   function updateParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString())
@@ -39,6 +57,8 @@ export function FilterBar({ filters }: FilterBarProps) {
   }
 
   function clearFilters() {
+    setSourceInput('')
+    setCategoryInput('')
     router.push('?')
   }
 
@@ -50,9 +70,9 @@ export function FilterBar({ filters }: FilterBarProps) {
         <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Source"
-          value={filters.source ?? ''}
+          value={sourceInput}
           className={`w-full pl-8 sm:w-36 ${filters.source ? 'ring-1 ring-primary/40' : ''}`}
-          onChange={(e) => updateParam('source', e.target.value)}
+          onChange={(e) => setSourceInput(e.target.value)}
         />
       </div>
 
@@ -76,9 +96,9 @@ export function FilterBar({ filters }: FilterBarProps) {
         <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Category"
-          value={filters.category ?? ''}
+          value={categoryInput}
           className={`w-full pl-8 sm:w-36 ${filters.category ? 'ring-1 ring-primary/40' : ''}`}
-          onChange={(e) => updateParam('category', e.target.value)}
+          onChange={(e) => setCategoryInput(e.target.value)}
         />
       </div>
 
