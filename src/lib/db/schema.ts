@@ -241,10 +241,24 @@ export const actions = pgTable('actions', {
   configSnapshot: jsonb('config_snapshot').notNull(),
   idempotencyKey: text('idempotency_key').unique(),
   status:         text('status').default('pending'),
+  triggerMode:    text('trigger_mode').notNull().default('manual'),
   errorInfo:      jsonb('error_info'),
   executedAt:     timestamptz('executed_at'),
   createdAt:      timestamptz('created_at').defaultNow(),
 })
+
+export const controllerJobActionBindings = pgTable(
+  'controller_job_action_bindings',
+  {
+    controllerJobId: uuid('controller_job_id').notNull().references(() => controllerJobs.id, { onDelete: 'cascade' }),
+    actionTemplateId: uuid('action_template_id').notNull().references(() => actionTemplates.id, { onDelete: 'cascade' }),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.controllerJobId, t.actionTemplateId] }),
+    index('idx_controller_action_bindings_template').on(t.actionTemplateId),
+  ]
+)
 
 export const baselines = pgTable('baselines', {
   id:            uuid('id').primaryKey().defaultRandom(),

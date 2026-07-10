@@ -1,6 +1,7 @@
 'use client'
 
 import { Fragment, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -48,6 +49,17 @@ interface AuditEntry {
 interface EventDetailData {
   event: EventData
   auditLog: AuditEntry[]
+  actions: ActionExecution[]
+}
+
+interface ActionExecution {
+  id: string
+  label: string
+  status: string | null
+  triggerMode: string
+  errorInfo: unknown
+  executedAt: string | null
+  createdAt: string | null
 }
 
 const VALID_STATUSES = ['open', 'acknowledged', 'resolved', 'dismissed'] as const
@@ -113,7 +125,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
     )
   }
 
-  const { event, auditLog } = data
+  const { event, auditLog, actions } = data
 
   const normalizedView = {
     title: event.title,
@@ -123,6 +135,9 @@ export function EventDetail({ eventId }: { eventId: string }) {
     severity: event.severity,
     tags: event.tags,
   }
+  const controllerJobId = event.source === 'controller' && typeof event.tags === 'object' && event.tags
+    ? (event.tags as Record<string, unknown>).controllerJobId
+    : null
 
   return (
     <div className="flex flex-col gap-6">
@@ -137,6 +152,11 @@ export function EventDetail({ eventId }: { eventId: string }) {
           <span>
             <span className="font-medium text-foreground">Source:</span> {event.source}
           </span>
+          {typeof controllerJobId === 'string' && (
+            <Link href={`/${tenant.slug}/settings/controller-jobs`} className="underline hover:text-foreground">
+              View controller configuration
+            </Link>
+          )}
           <span>
             <span className="font-medium text-foreground">Category:</span> {event.category}
           </span>
@@ -194,6 +214,32 @@ export function EventDetail({ eventId }: { eventId: string }) {
             .catch(() => {})
         }}
       />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Action History</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {actions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No actions have run for this event.</p>
+          ) : (
+            <Table>
+              <TableHeader><TableRow><TableHead>Action</TableHead><TableHead>Trigger</TableHead><TableHead>Status</TableHead><TableHead>When</TableHead><TableHead>Details</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {actions.map((action) => (
+                  <TableRow key={action.id}>
+                    <TableCell>{action.label}</TableCell>
+                    <TableCell className="capitalize">{action.triggerMode}</TableCell>
+                    <TableCell>{action.status}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{formatDateTime(action.executedAt ?? action.createdAt ?? event.receivedAt)}</TableCell>
+                    <TableCell className="text-xs text-destructive">{action.errorInfo ? JSON.stringify(action.errorInfo) : '—'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Normalized fields */}
       <Card>

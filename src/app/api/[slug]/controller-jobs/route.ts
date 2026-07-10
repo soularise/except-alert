@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { and, count, desc, eq, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { controllerJobs, tenantProviders } from '@/lib/db/schema'
+import { actionTemplates, controllerJobs, tenantProviders } from '@/lib/db/schema'
 import { requireTenantAccess } from '@/lib/auth-guard'
 import { canCreateControllerJob, limitsFor } from '@/lib/plan-limits'
 import { controllerJobWriteSchema, providerIdForControllerJob } from '@/lib/controller-jobs'
 import { sanitizeControllerJob } from '@/lib/controller-job-response'
+import { controllerActionIdsByJob, replaceControllerActionBindings } from '@/lib/controller-action-bindings'
 
 type Params = { params: Promise<{ slug: string }> }
 
@@ -21,7 +22,15 @@ export async function GET(request: NextRequest, { params }: Params) {
       .where(eq(controllerJobs.tenantId, access.tenant.id))
       .orderBy(desc(controllerJobs.createdAt))
 
-    return NextResponse.json({ jobs: jobs.map(sanitizeControllerJob) })
+    const bindings = await controllerActionIdsByJob(db, jobs.map((job) => job.id))
+    const templates = await db
+      .select({ id: actionTemplates.id, label: actionTemplates.label, category: actionTemplates.category })
+      .from(actionTemplates)
+      .where(eq(actionTemplates.tenantId, access.tenant.id))
+    return NextResponse.json({
+      jobs: jobs.map((job) => ({ ...sanitizeControllerJob(job), actionTemplateIds: bindings.get(job.id) ?? [] })),
+      actionTemplates: templates.filter((template) => template.category.startsWith('controller.')),
+    })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -74,7 +83,7 @@ export async function POST(request: NextRequest, { params }: Params) {
         throw new ControllerJobRouteError('controller_job_limit')
       }
 
-      return tx
+      const [job] = await tx
         .insert(controllerJobs)
         .values({
           tenantId: access.tenant.id,
@@ -86,6 +95,8 @@ export async function POST(request: NextRequest, { params }: Params) {
           enabled: parsed.data.enabled,
         })
         .returning()
+      await replaceControllerActionBindings(tx, access.tenant.id, job.id, parsed.data.type, parsed.data.actionTemplateIds)
+      return [job]
     })
 
     return NextResponse.json({ job: sanitizeControllerJob(created) }, { status: 201 })
@@ -95,7 +106,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 }
 
 class ControllerJobRouteError extends Error {
-  constructor(public code: 'unknown_provider' | 'controller_job_limit') {
+  constructor(public code: 'unknown_provider' | 'controller_job_limit' | 'invalid_controller_action_templates') {
     super(code)
   }
 }
@@ -114,6 +125,11 @@ function controllerJobErrorResponse(err: unknown, plan: string | null | undefine
       { error: `Your current plan allows ${limit} controller job${limit === 1 ? '' : 's'}.` },
       { status: 403 }
     )
+  }
+
+  if ((err instanceof ControllerJobRouteError && err.code === 'invalid_controller_action_templates') ||
+    (err instanceof Error && err.message === 'invalid_controller_action_templates')) {
+    return NextResponse.json({ error: 'Controller actions must belong to this organization and match the controller event category.' }, { status: 400 })
   }
 
   if (err instanceof Error && err.message.includes('controller_jobs_tenant_name_unique')) {

@@ -40,6 +40,20 @@ export async function GET(
       .where(eq(auditLog.hookId, event.hookId))
       .orderBy(asc(auditLog.receivedAt))
 
+    const actionExecutions = await db
+      .select({
+        id: actions.id,
+        label: actions.label,
+        status: actions.status,
+        triggerMode: actions.triggerMode,
+        errorInfo: actions.errorInfo,
+        executedAt: actions.executedAt,
+        createdAt: actions.createdAt,
+      })
+      .from(actions)
+      .where(and(eq(actions.eventId, event.id), eq(actions.tenantId, access.tenant.id)))
+      .orderBy(asc(actions.createdAt))
+
     return NextResponse.json({
       event: {
         ...event,
@@ -52,10 +66,23 @@ export async function GET(
         processedAt: entry.processedAt ? entry.processedAt.toISOString() : null,
         deliveredAt: entry.deliveredAt ? entry.deliveredAt.toISOString() : null,
       })),
+      actions: actionExecutions.map((action) => ({
+        ...action,
+        errorInfo: sanitizeActionError(action.errorInfo),
+        executedAt: action.executedAt ? action.executedAt.toISOString() : null,
+        createdAt: action.createdAt ? action.createdAt.toISOString() : null,
+      })),
     })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
+}
+
+function sanitizeActionError(errorInfo: unknown) {
+  if (!errorInfo || typeof errorInfo !== 'object') return null
+  const value = errorInfo as Record<string, unknown>
+  if (typeof value.statusCode === 'number') return { statusCode: value.statusCode }
+  return { message: 'Action delivery failed.' }
 }
 
 export async function PATCH(

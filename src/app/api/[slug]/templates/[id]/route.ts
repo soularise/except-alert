@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { actionTemplates } from '@/lib/db/schema'
+import { actionTemplates, controllerJobActionBindings } from '@/lib/db/schema'
 import { requireTenantAccess } from '@/lib/auth-guard'
 
 export async function PATCH(
@@ -36,6 +36,20 @@ export async function PATCH(
       .limit(1)
 
     if (!existing) return NextResponse.json({ error: 'Template not found' }, { status: 404 })
+
+    if (typeof category === 'string' && category.trim() !== existing.category) {
+      const [binding] = await db
+        .select({ controllerJobId: controllerJobActionBindings.controllerJobId })
+        .from(controllerJobActionBindings)
+        .where(eq(controllerJobActionBindings.actionTemplateId, existing.id))
+        .limit(1)
+      if (binding) {
+        return NextResponse.json(
+          { error: 'Remove this action from its controller before changing its category.' },
+          { status: 409 }
+        )
+      }
+    }
 
     const updates: Partial<typeof actionTemplates.$inferInsert> = {}
     if (typeof category === 'string') updates.category = category.trim()

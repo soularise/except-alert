@@ -7,6 +7,7 @@ import { requireTenantAccess } from '@/lib/auth-guard'
 import { controllerJobWriteSchema, providerIdForControllerJob } from '@/lib/controller-jobs'
 import { canCreateControllerJob, limitsFor } from '@/lib/plan-limits'
 import { sanitizeControllerJob } from '@/lib/controller-job-response'
+import { controllerActionIdsByJob, replaceControllerActionBindings } from '@/lib/controller-action-bindings'
 
 type Params = { params: Promise<{ slug: string; id: string }> }
 
@@ -23,7 +24,8 @@ export async function GET(request: NextRequest, { params }: Params) {
       .limit(1)
 
     if (!job) return NextResponse.json({ error: 'Controller job not found' }, { status: 404 })
-    return NextResponse.json({ job: sanitizeControllerJob(job) })
+    const bindings = await controllerActionIdsByJob(db, [job.id])
+    return NextResponse.json({ job: { ...sanitizeControllerJob(job), actionTemplateIds: bindings.get(job.id) ?? [] } })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -59,8 +61,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       cronExpr: unknown
       timezone: unknown
       enabled: unknown
+      actionTemplateIds: unknown
     }>
 
+    const existingBindings = await controllerActionIdsByJob(db, [existing.id])
     const candidate = controllerJobWriteSchema.parse({
       name: updates.name ?? existing.name,
       type: updates.type ?? existing.type,
@@ -68,6 +72,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       cronExpr: updates.cronExpr ?? existing.cronExpr,
       timezone: updates.timezone ?? existing.timezone,
       enabled: updates.enabled ?? existing.enabled,
+      actionTemplateIds: updates.actionTemplateIds ?? existingBindings.get(existing.id) ?? [],
     })
 
     if (candidate.enabled && !canCreateControllerJob(access.tenant.plan, 0)) {
@@ -99,21 +104,25 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       }
     }
 
-    const [updated] = await db
-      .update(controllerJobs)
-      .set({
-        name: candidate.name,
-        type: candidate.type,
-        config: candidate.config,
-        cronExpr: candidate.cronExpr,
-        timezone: candidate.timezone,
-        enabled: candidate.enabled,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(controllerJobs.id, id), eq(controllerJobs.tenantId, access.tenant.id)))
-      .returning()
+    const [updated] = await db.transaction(async (tx) => {
+      const [job] = await tx
+        .update(controllerJobs)
+        .set({
+          name: candidate.name,
+          type: candidate.type,
+          config: candidate.config,
+          cronExpr: candidate.cronExpr,
+          timezone: candidate.timezone,
+          enabled: candidate.enabled,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(controllerJobs.id, id), eq(controllerJobs.tenantId, access.tenant.id)))
+        .returning()
+      await replaceControllerActionBindings(tx, access.tenant.id, job.id, candidate.type, candidate.actionTemplateIds)
+      return [job]
+    })
 
-    return NextResponse.json({ job: sanitizeControllerJob(updated) })
+    return NextResponse.json({ job: { ...sanitizeControllerJob(updated), actionTemplateIds: candidate.actionTemplateIds } })
   } catch (err) {
     if (err instanceof ZodError) {
       return NextResponse.json({ error: 'Invalid controller job configuration' }, { status: 400 })
@@ -123,6 +132,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         { error: 'A controller job with this name already exists.' },
         { status: 409 }
       )
+    }
+    if (err instanceof Error && err.message === 'invalid_controller_action_templates') {
+      return NextResponse.json({ error: 'Controller actions must belong to this organization and match the controller event category.' }, { status: 400 })
     }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

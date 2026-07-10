@@ -15,10 +15,13 @@ function renderTemplate(template: string, event: EventRow): string {
     .replace(/\{\{tags\.(\w+)\}\}/g, (_, key) => String((event.tags as Record<string, unknown>)?.[key] ?? ''))
 }
 
+export type ActionTriggerMode = 'manual' | 'automatic'
+
 export async function executeAction(
   tenantId: string,
   eventId: string,
-  templateId: string
+  templateId: string,
+  triggerMode: ActionTriggerMode = 'manual'
 ): Promise<{ success: boolean; actionId: string; alreadyExecuted: boolean; error?: string }> {
   const [event] = await db
     .select()
@@ -37,14 +40,34 @@ export async function executeAction(
 
   const idempotencyKey = `${eventId}:${templateId}`
 
-  const [existing] = await db
-    .select()
-    .from(actions)
-    .where(and(eq(actions.idempotencyKey, idempotencyKey), eq(actions.status, 'executed')))
-    .limit(1)
+  const [claimed] = await db
+    .insert(actions)
+    .values({
+      tenantId: event.tenantId,
+      eventId,
+      templateId,
+      label: template.label,
+      configSnapshot: template.config,
+      idempotencyKey,
+      status: 'pending',
+      triggerMode,
+    })
+    .onConflictDoNothing({ target: actions.idempotencyKey })
+    .returning()
 
-  if (existing) {
-    return { success: true, actionId: existing.id, alreadyExecuted: true }
+  if (!claimed) {
+    const [existing] = await db
+      .select()
+      .from(actions)
+      .where(eq(actions.idempotencyKey, idempotencyKey))
+      .limit(1)
+    if (!existing) throw new Error('Could not claim action execution')
+    return {
+      success: existing.status === 'executed',
+      actionId: existing.id,
+      alreadyExecuted: true,
+      ...(existing.status === 'failed' ? { error: 'Action previously failed.' } : {}),
+    }
   }
 
   const config = template.config as {
@@ -105,22 +128,13 @@ export async function executeAction(
     errorInfo = { message: err instanceof Error ? err.message : String(err) }
   }
 
-  const [inserted] = await db
-    .insert(actions)
-    .values({
-      tenantId: event.tenantId,
-      eventId,
-      templateId,
-      label: template.label,
-      configSnapshot: template.config,
-      idempotencyKey,
-      status: actionStatus,
-      errorInfo: errorInfo as never,
-      executedAt,
-    })
+  const [updated] = await db
+    .update(actions)
+    .set({ status: actionStatus, errorInfo: errorInfo as never, executedAt })
+    .where(eq(actions.id, claimed.id))
     .returning()
 
-  if (actionStatus === 'executed') {
+  if (actionStatus === 'executed' && triggerMode === 'manual') {
     await db
       .update(events)
       .set({ status: 'acknowledged' })
@@ -129,7 +143,7 @@ export async function executeAction(
 
   return {
     success: actionStatus === 'executed',
-    actionId: inserted.id,
+    actionId: updated.id,
     alreadyExecuted: false,
     ...(actionStatus === 'failed' ? { error: JSON.stringify(errorInfo) } : {}),
   }

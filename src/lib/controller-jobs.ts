@@ -72,6 +72,7 @@ export const controllerJobWriteSchema = z
     cronExpr: boundedCron.default('*/5 * * * *'),
     timezone: timezone.default('UTC'),
     enabled: z.boolean().default(true),
+    actionTemplateIds: z.array(z.string().uuid()).max(10).default([]),
   })
   .superRefine((value, ctx) => {
     const parsed = controllerJobConfigSchemas[value.type].safeParse(value.config)
@@ -101,6 +102,10 @@ export function providerIdForControllerJob(type: ControllerJobType, config: unkn
   const parsed = controllerJobConfigSchemas[type].safeParse(config)
   if (!parsed.success) return null
   return parsed.data.providerId
+}
+
+export function controllerEventCategory(type: ControllerJobType) {
+  return `controller.${type}`
 }
 
 export function isValidTimeZone(value: string) {

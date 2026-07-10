@@ -6,6 +6,7 @@ import { and, count, eq, gte, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { controllerJobs, events } from '@/lib/db/schema'
 import { sendTenantAlertNotifications } from '@/lib/notifications'
+import { dispatchControllerActions } from '@/lib/controller-actions'
 import {
   controllerJobConfigSchemas,
   type ControllerJobType,
@@ -138,6 +139,9 @@ async function processControllerJob(
       )
       if (delivery.failed.length > 0) {
         console.error('[controller] Alert delivery failed:', delivery.failed)
+      }
+      if (insertedEvent.transition === 'alert' || insertedEvent.transition === 'error') {
+        await dispatchControllerActions(job.tenantId, insertedEvent.id, job.id, job.type as ControllerJobType)
       }
     }
 
@@ -564,7 +568,7 @@ async function recordControllerTransition(
 ) {
   if (!transition.eventTransition) return null
   const inserted = await insertControllerEvent(tx, job, result, transition, now)
-  return inserted ? { transition: transition.eventTransition } : null
+  return inserted ? { id: inserted, transition: transition.eventTransition } : null
 }
 
 async function insertControllerEvent(
@@ -585,7 +589,7 @@ async function insertControllerEvent(
 
   if (existing) return false
 
-  await tx.insert(events).values({
+  const [created] = await tx.insert(events).values({
     tenantId: job.tenantId,
     hookId,
     source: 'controller',
@@ -612,8 +616,8 @@ async function insertControllerEvent(
     occurredAt: now,
     receivedAt: now,
     status: 'open',
-  })
-  return true
+  }).returning({ id: events.id })
+  return created?.id ?? false
 }
 
 function controllerEventHookId(

@@ -195,6 +195,35 @@ test('controller scheduler records and delivers cooldown-aware state transitions
   assert.match(response, /Health check request failed\./)
 })
 
+test('controller alert events can dispatch explicitly bound automatic actions', () => {
+  const migration = read('drizzle/migrations/0012_controller_action_bindings.sql')
+  const schema = read('src/lib/db/schema.ts')
+  const controller = read('src/lib/controller.ts')
+  const bindings = read('src/lib/controller-action-bindings.ts')
+  const dispatcher = read('src/lib/controller-actions.ts')
+  const hitl = read('src/lib/hitl.ts')
+  const listRoute = read('src/app/api/[slug]/controller-jobs/route.ts')
+  const detailRoute = read('src/app/api/[slug]/controller-jobs/[id]/route.ts')
+  const eventRoute = read('src/app/api/[slug]/events/[id]/route.ts')
+
+  assert.match(migration, /controller_job_action_bindings/)
+  assert.match(migration, /trigger_mode/)
+  assert.match(schema, /controllerJobActionBindings/)
+  assert.match(schema, /triggerMode/)
+  assert.match(controller, /dispatchControllerActions/)
+  assert.match(controller, /insertedEvent\.transition === 'alert' \|\| insertedEvent\.transition === 'error'/)
+  assert.match(dispatcher, /controllerEventCategory/)
+  assert.match(dispatcher, /'automatic'/)
+  assert.match(bindings, /invalid_controller_action_templates/)
+  assert.match(bindings, /replaceControllerActionBindings/)
+  assert.match(hitl, /onConflictDoNothing/)
+  assert.match(hitl, /triggerMode === 'manual'/)
+  assert.match(listRoute, /actionTemplateIds/)
+  assert.match(detailRoute, /actionTemplateIds/)
+  assert.match(eventRoute, /sanitizeActionError/)
+  assert.match(eventRoute, /triggerMode: actions\.triggerMode/)
+})
+
 test('internal controller route requires a timing-safe secret and runs scheduler counts', () => {
   const route = read('src/app/api/internal/controller/route.ts')
 

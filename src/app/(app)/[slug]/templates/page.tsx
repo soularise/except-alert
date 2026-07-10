@@ -76,6 +76,17 @@ interface ProviderGroup {
   categories: EventCategory[]
 }
 
+const CONTROLLER_ACTION_GROUP: ProviderGroup = {
+  providerId: 'controller',
+  providerName: 'Controllers',
+  categories: [
+    { value: 'controller.health_ping', label: 'Health ping' },
+    { value: 'controller.dead_letter', label: 'Silence' },
+    { value: 'controller.cron_deadline', label: 'Deadline' },
+    { value: 'controller.deviation', label: 'Deviation' },
+  ],
+}
+
 export default function TemplatesPage() {
   const { tenant } = useTenant()
   const [templates, setTemplates] = useState<ActionTemplate[]>([])
@@ -126,7 +137,7 @@ export default function TemplatesPage() {
             providerName: p.name,
             categories: p.eventCategories,
           }))
-        setProviderGroups(groups)
+        setProviderGroups([...groups, CONTROLLER_ACTION_GROUP])
       })
       .catch(() => {})
   }, [tenant.slug])

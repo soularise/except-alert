@@ -41,7 +41,10 @@ type ControllerJob = {
   lastStatus: ControllerStatus
   lastResult: Record<string, unknown> | null
   createdAt: string
+  actionTemplateIds: string[]
 }
+
+type ActionTemplate = { id: string; label: string; category: string }
 
 type ProviderItem = {
   id: string
@@ -64,6 +67,7 @@ type JobDraft = {
   direction: 'spike' | 'drop' | 'both'
   cronExpr: string
   timezone: string
+  actionTemplateIds: string[]
 }
 
 const DEFAULT_DRAFT: JobDraft = {
@@ -81,6 +85,7 @@ const DEFAULT_DRAFT: JobDraft = {
   direction: 'both',
   cronExpr: '*/5 * * * *',
   timezone: 'UTC',
+  actionTemplateIds: [],
 }
 
 const TYPE_LABELS: Record<ControllerJobType, string> = {
@@ -94,6 +99,7 @@ export default function ControllerJobsPage() {
   const { tenant, role } = useTenant()
   const [jobs, setJobs] = useState<ControllerJob[]>([])
   const [providers, setProviders] = useState<ProviderItem[]>([])
+  const [actionTemplates, setActionTemplates] = useState<ActionTemplate[]>([])
   const [draft, setDraft] = useState<JobDraft>(DEFAULT_DRAFT)
   const [editingJobId, setEditingJobId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -126,9 +132,10 @@ export default function ControllerJobsPage() {
       if (!jobsRes.ok) throw new Error('Failed to load controller jobs')
       if (!providersRes.ok) throw new Error('Failed to load sources')
 
-      const jobsData = await jobsRes.json() as { jobs: ControllerJob[] }
+      const jobsData = await jobsRes.json() as { jobs: ControllerJob[]; actionTemplates: ActionTemplate[] }
       const providerData = await providersRes.json() as { providers: ProviderItem[] }
       setJobs(jobsData.jobs)
+      setActionTemplates(jobsData.actionTemplates ?? [])
       setProviders(providerData.providers)
       setError(null)
     } catch (err) {
@@ -154,6 +161,7 @@ export default function ControllerJobsPage() {
       cronExpr: draft.cronExpr,
       timezone: draft.timezone,
       enabled,
+      actionTemplateIds: draft.actionTemplateIds,
     }
 
     if (draft.type === 'health_ping') {
@@ -484,7 +492,10 @@ export default function ControllerJobsPage() {
               <Select
                 value={draft.type}
                 onValueChange={(value) => {
-                  if (value) updateDraft('type', value as ControllerJobType)
+                  if (value) {
+                    updateDraft('type', value as ControllerJobType)
+                    updateDraft('actionTemplateIds', [])
+                  }
                 }}
               >
                 <SelectTrigger id="controller-type" className="w-full">
@@ -508,6 +519,36 @@ export default function ControllerJobsPage() {
                 updateDraft={updateDraft}
               />
             )}
+
+            <div className="grid gap-2 sm:col-span-2">
+              <Label>Automatic actions</Label>
+              <p className="text-xs text-muted-foreground">
+                These actions run only when this controller creates an alert or error event. Recoveries stay informational.
+              </p>
+              {actionTemplates.filter((template) => template.category === `controller.${draft.type}`).length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No matching controller actions yet. Create one from the Actions page first.
+                </p>
+              ) : (
+                <div className="grid gap-2 rounded-md border p-3">
+                  {actionTemplates.filter((template) => template.category === `controller.${draft.type}`).map((template) => (
+                    <label key={template.id} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={draft.actionTemplateIds.includes(template.id)}
+                        onChange={(event) => updateDraft(
+                          'actionTemplateIds',
+                          event.target.checked
+                            ? [...draft.actionTemplateIds, template.id]
+                            : draft.actionTemplateIds.filter((id) => id !== template.id)
+                        )}
+                      />
+                      {template.label}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <div className="grid gap-2">
               <Label htmlFor="controller-cron">Schedule</Label>
@@ -793,6 +834,7 @@ function jobToDraft(job: ControllerJob): JobDraft {
     type: job.type,
     cronExpr: job.cronExpr,
     timezone: job.timezone,
+    actionTemplateIds: job.actionTemplateIds ?? [],
   }
 
   if (job.type === 'health_ping') {
