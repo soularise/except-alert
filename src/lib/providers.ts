@@ -94,7 +94,6 @@ export const PROVIDERS: ProviderDef[] = [
   },
   {
     id: 'sentry',
-    hidden: true,
     name: 'Sentry',
     icon: '📡',
     description: 'Error and crash report events',
