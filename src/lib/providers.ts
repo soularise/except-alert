@@ -6,7 +6,7 @@ export type ProviderDef = {
   icon: string
   description: string
   signatureHeader: string | null
-  signatureAlgorithm: 'stripe' | 'hmac-sha256' | 'raw-sha256'
+  signatureAlgorithm: 'stripe' | 'hmac-sha256' | 'raw-sha256' | 'tive' | 'header-token'
   signatureLabel: string
   secretRequired?: boolean
   secretLabel?: string
@@ -72,6 +72,40 @@ export const PROVIDERS: ProviderDef[] = [
       { value: 'supabase.insert', label: 'Row Inserted' },
       { value: 'supabase.update', label: 'Row Updated' },
       { value: 'supabase.delete', label: 'Row Deleted' },
+    ],
+  },
+  {
+    id: 'tive',
+    name: 'Tive',
+    icon: '📍',
+    description: 'Shipment temperature excursions and GPS location alerts',
+    signatureHeader: 'x-tive-signature',
+    signatureAlgorithm: 'tive',
+    signatureLabel: 'Tive signed webhook',
+    secretLabel: 'Tive Webhook Secret',
+    secretPlaceholder: 'Webhook secret from Tive',
+    configHelp:
+      'Create an Alert Data Stream webhook in Tive and paste the generated ExceptAlert URL. Relay validates Tive’s x-tive-signature header before accepting events.',
+    docsUrl: 'https://developers.tive.com/docs/data-structures',
+    eventCategories: [
+      { value: 'tive.temperature_excursion', label: 'Temperature Excursion' },
+    ],
+  },
+  {
+    id: 'sensos',
+    name: 'Sensos',
+    icon: '🌡️',
+    description: 'Shipment temperature excursions with GPS and device telemetry',
+    signatureHeader: 'x-relay-token',
+    signatureAlgorithm: 'header-token',
+    signatureLabel: 'Custom header token',
+    secretLabel: 'Sensos Webhook Token',
+    secretPlaceholder: 'Shared token configured in Sensos',
+    configHelp:
+      'Configure Sensos Data Delivery to send a custom x-relay-token header matching this secret. Temperature alerts retain the vendor payload and render shipment context in ExceptAlert.',
+    docsUrl: 'https://developers.sensos.io/docs/alerts-common-schema',
+    eventCategories: [
+      { value: 'sensos.temperature_excursion', label: 'Temperature Excursion' },
     ],
   },
   {

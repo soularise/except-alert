@@ -16,6 +16,7 @@ import {
 import { SeverityBadge } from '@/components/SeverityBadge'
 import { StatusBadge } from '@/components/StatusBadge'
 import { HitlActionPanel } from '@/components/HitlActionPanel'
+import { LogisticsContext } from '@/components/LogisticsContext'
 import { useTenant } from '@/components/TenantProvider'
 
 interface EventData {
@@ -177,6 +178,8 @@ export function EventDetail({ eventId }: { eventId: string }) {
       </div>
 
       <Separator />
+
+      <LogisticsContext tags={event.tags} />
 
       {/* Status controls */}
       <Card>
