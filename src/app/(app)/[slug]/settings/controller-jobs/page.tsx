@@ -25,7 +25,7 @@ import { useTenant } from '@/components/TenantProvider'
 import { UpgradeRequestButton } from '@/components/UpgradeRequestButton'
 import { limitsFor } from '@/lib/plan-limits'
 
-type ControllerJobType = 'health_ping' | 'dead_letter' | 'cron_deadline' | 'deviation'
+type ControllerJobType = 'health_ping' | 'dead_letter' | 'cron_deadline' | 'agent_run_deadline' | 'deviation'
 type ControllerStatus = 'pending' | 'ok' | 'alert' | 'error'
 
 type ControllerJob = {
@@ -62,6 +62,7 @@ type JobDraft = {
   maximumSilenceHours: string
   minimumEvents: string
   windowHours: string
+  maximumRunMinutes: string
   sigmaThreshold: string
   baselineDays: string
   direction: 'spike' | 'drop' | 'both'
@@ -80,6 +81,7 @@ const DEFAULT_DRAFT: JobDraft = {
   maximumSilenceHours: '24',
   minimumEvents: '1',
   windowHours: '24',
+  maximumRunMinutes: '30',
   sigmaThreshold: '3',
   baselineDays: '14',
   direction: 'both',
@@ -92,14 +94,18 @@ const TYPE_LABELS: Record<ControllerJobType, string> = {
   health_ping: 'Health ping',
   dead_letter: 'Silence',
   cron_deadline: 'Deadline',
+  agent_run_deadline: 'AI work deadline',
   deviation: 'Deviation',
 }
+
+const ALL_CONTROLLER_JOB_TYPES = Object.keys(TYPE_LABELS) as ControllerJobType[]
 
 export default function ControllerJobsPage() {
   const { tenant, role } = useTenant()
   const [jobs, setJobs] = useState<ControllerJob[]>([])
   const [providers, setProviders] = useState<ProviderItem[]>([])
   const [actionTemplates, setActionTemplates] = useState<ActionTemplate[]>([])
+  const [supportedTypes, setSupportedTypes] = useState<ControllerJobType[]>(ALL_CONTROLLER_JOB_TYPES)
   const [draft, setDraft] = useState<JobDraft>(DEFAULT_DRAFT)
   const [editingJobId, setEditingJobId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -132,10 +138,11 @@ export default function ControllerJobsPage() {
       if (!jobsRes.ok) throw new Error('Failed to load controller jobs')
       if (!providersRes.ok) throw new Error('Failed to load sources')
 
-      const jobsData = await jobsRes.json() as { jobs: ControllerJob[]; actionTemplates: ActionTemplate[] }
+      const jobsData = await jobsRes.json() as { jobs: ControllerJob[]; actionTemplates: ActionTemplate[]; supportedTypes?: ControllerJobType[] }
       const providerData = await providersRes.json() as { providers: ProviderItem[] }
       setJobs(jobsData.jobs)
       setActionTemplates(jobsData.actionTemplates ?? [])
+      setSupportedTypes(jobsData.supportedTypes ?? ALL_CONTROLLER_JOB_TYPES)
       setProviders(providerData.providers)
       setError(null)
     } catch (err) {
@@ -192,6 +199,16 @@ export default function ControllerJobsPage() {
           providerId: draft.providerId,
           minimumEvents: Number(draft.minimumEvents),
           windowHours: Number(draft.windowHours),
+        },
+      }
+    }
+
+    if (draft.type === 'agent_run_deadline') {
+      return {
+        ...base,
+        config: {
+          providerId: draft.providerId,
+          maximumRunMinutes: Number(draft.maximumRunMinutes),
         },
       }
     }
@@ -502,10 +519,9 @@ export default function ControllerJobsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="health_ping">Health ping</SelectItem>
-                  <SelectItem value="dead_letter">Silence</SelectItem>
-                  <SelectItem value="cron_deadline">Deadline</SelectItem>
-                  <SelectItem value="deviation">Deviation</SelectItem>
+                  {supportedTypes.map((type) => (
+                    <SelectItem key={type} value={type}>{TYPE_LABELS[type]}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -683,6 +699,15 @@ function ProviderJobFields({
             onChange={(value) => updateDraft('windowHours', value)}
           />
         </>
+      )}
+
+      {draft.type === 'agent_run_deadline' && (
+        <NumberField
+          id="controller-agent-run-deadline"
+          label="Maximum run minutes without a heartbeat"
+          value={draft.maximumRunMinutes}
+          onChange={(value) => updateDraft('maximumRunMinutes', value)}
+        />
       )}
 
       {draft.type === 'deviation' && (
@@ -864,6 +889,14 @@ function jobToDraft(job: ControllerJob): JobDraft {
       providerId: stringConfig(config, 'providerId', ''),
       minimumEvents: stringConfig(config, 'minimumEvents', DEFAULT_DRAFT.minimumEvents),
       windowHours: stringConfig(config, 'windowHours', DEFAULT_DRAFT.windowHours),
+    }
+  }
+
+  if (job.type === 'agent_run_deadline') {
+    return {
+      ...draft,
+      providerId: stringConfig(config, 'providerId', ''),
+      maximumRunMinutes: stringConfig(config, 'maximumRunMinutes', DEFAULT_DRAFT.maximumRunMinutes),
     }
   }
 

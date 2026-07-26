@@ -83,6 +83,7 @@ const CONTROLLER_ACTION_GROUP: ProviderGroup = {
     { value: 'controller.health_ping', label: 'Health ping' },
     { value: 'controller.dead_letter', label: 'Silence' },
     { value: 'controller.cron_deadline', label: 'Deadline' },
+    { value: 'controller.agent_run_deadline', label: 'AI work deadline' },
     { value: 'controller.deviation', label: 'Deviation' },
   ],
 }

@@ -19,6 +19,27 @@ export type ProviderDef = {
 
 export const PROVIDERS: ProviderDef[] = [
   {
+    id: 'agent-observation',
+    name: 'AI Work Watchdog',
+    icon: '🤖',
+    description: 'Explicit lifecycle signals from approved AI or command wrappers',
+    signatureHeader: 'x-relay-token',
+    signatureAlgorithm: 'header-token',
+    signatureLabel: 'Wrapper token',
+    secretLabel: 'Watchdog token',
+    secretPlaceholder: 'Generate a unique token for this approved wrapper',
+    configHelp:
+      'This source receives only metadata from an explicitly installed wrapper: lifecycle state, duration, correlation ID, and safe label. Do not send prompts, source code, command arguments, or command output.',
+    docsUrl: '',
+    eventCategories: [
+      { value: 'agent.run.started', label: 'Run started' },
+      { value: 'agent.execution.heartbeat', label: 'Run heartbeat' },
+      { value: 'agent.run.completed', label: 'Run completed' },
+      { value: 'agent.run.failed', label: 'Run failed' },
+      { value: 'agent.run.aborted', label: 'Run aborted' },
+    ],
+  },
+  {
     id: 'stripe',
     name: 'Stripe',
     icon: '💳',

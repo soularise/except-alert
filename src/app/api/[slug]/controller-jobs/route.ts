@@ -5,6 +5,7 @@ import { actionTemplates, controllerJobs, tenantProviders } from '@/lib/db/schem
 import { requireTenantAccess } from '@/lib/auth-guard'
 import { canCreateControllerJob, limitsFor } from '@/lib/plan-limits'
 import { controllerJobWriteSchema, providerIdForControllerJob } from '@/lib/controller-jobs'
+import { controllerJobTypeIsSchemaCompatible, supportedControllerJobTypes } from '@/lib/controller-job-schema-compatibility'
 import { sanitizeControllerJob } from '@/lib/controller-job-response'
 import { controllerActionIdsByJob, replaceControllerActionBindings } from '@/lib/controller-action-bindings'
 
@@ -30,6 +31,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     return NextResponse.json({
       jobs: jobs.map((job) => ({ ...sanitizeControllerJob(job), actionTemplateIds: bindings.get(job.id) ?? [] })),
       actionTemplates: templates.filter((template) => template.category.startsWith('controller.')),
+      supportedTypes: await supportedControllerJobTypes(),
     })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -51,6 +53,10 @@ export async function POST(request: NextRequest, { params }: Params) {
   const parsed = controllerJobWriteSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid controller job configuration' }, { status: 400 })
+  }
+
+  if (!await controllerJobTypeIsSchemaCompatible(parsed.data.type)) {
+    return NextResponse.json({ error: 'AI work deadline requires the latest database migration.' }, { status: 409 })
   }
 
   const providerId = providerIdForControllerJob(parsed.data.type, parsed.data.config)

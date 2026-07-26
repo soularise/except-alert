@@ -30,11 +30,16 @@ test('controller job migration creates the Phase 2B scheduler table', () => {
 
 test('controller job validators cover all first-wave job types', () => {
   const validators = read('src/lib/controller-jobs.ts')
+  const agentDeadlineMigration = read('drizzle/migrations/0013_agent_run_deadline_controller.sql')
 
   assert.match(validators, /CONTROLLER_JOB_TYPES = \[/)
   assert.match(validators, /health_ping/)
   assert.match(validators, /dead_letter/)
   assert.match(validators, /cron_deadline/)
+  assert.match(validators, /agent_run_deadline/)
+  assert.match(validators, /maximumRunMinutes/)
+  assert.match(agentDeadlineMigration, /agent_run_deadline/)
+  assert.match(agentDeadlineMigration, /controller_jobs_type_check/)
   assert.match(validators, /deviation/)
   assert.match(validators, /isValidFiveFieldCron/)
   assert.match(validators, /isValidTimeZone/)
@@ -42,6 +47,18 @@ test('controller job validators cover all first-wave job types', () => {
   assert.match(validators, /URL must not include credentials/)
   assert.match(validators, /direction: z\.enum\(\['spike', 'drop', 'both'\]\)/)
   assert.match(validators, /providerIdForControllerJob/)
+})
+
+test('AI work deadline is hidden and rejected until its database constraint exists', () => {
+  const compatibility = read('src/lib/controller-job-schema-compatibility.ts')
+  const route = read('src/app/api/[slug]/controller-jobs/route.ts')
+  const page = read('src/app/(app)/[slug]/settings/controller-jobs/page.tsx')
+
+  assert.match(compatibility, /pg_constraint/)
+  assert.match(compatibility, /agent_run_deadline/)
+  assert.match(route, /supportedTypes/)
+  assert.match(route, /latest database migration/)
+  assert.match(page, /supportedTypes\.map/)
 })
 
 test('controller job API enforces tenant roles, provider ownership, and plan limits', () => {
@@ -116,6 +133,7 @@ test('controller job settings UI exposes plan-aware management', () => {
   assert.match(page, /Health ping/)
   assert.match(page, /Silence/)
   assert.match(page, /Deadline/)
+  assert.match(page, /AI work deadline/)
   assert.match(page, /Deviation/)
 })
 
@@ -147,6 +165,9 @@ test('controller scheduler claims due jobs and records provider evaluations', ()
   assert.match(controller, /catch \{\s*return new Date\(now\.getTime\(\) \+ 5 \* 60_000\)\s*\}/)
   assert.match(controller, /evaluateDeadLetter/)
   assert.match(controller, /evaluateCronDeadline/)
+  assert.match(controller, /evaluateAgentRunDeadline/)
+  assert.match(controller, /agent\.execution\.heartbeat/)
+  assert.match(controller, /type === 'agent_run_deadline'/)
   assert.match(controller, /evaluateHealthPing/)
   assert.match(controller, /eq\(events\.tenantId, tenantId\)/)
   assert.match(controller, /eq\(events\.source, providerId\)/)
@@ -159,6 +180,22 @@ test('controller scheduler claims due jobs and records provider evaluations', ()
   assert.match(controller, /return mappedIpv4 \? isBlockedIpv4\(mappedIpv4\) : true/)
   assert.match(eventIdempotencyMigration, /events_controller_hook_unique/)
   assert.match(eventIdempotencyMigration, /WHERE source = 'controller'/)
+})
+
+test('AI Work Watchdog keeps AI observation explicit and data-minimized', () => {
+  const providerCatalog = read('src/lib/providers.ts')
+  const watchdog = read('scripts/ai-work-watchdog.mjs')
+  const docs = read('docs/ai-work-watchdog.md')
+
+  assert.match(providerCatalog, /id: 'agent-observation'/)
+  assert.match(providerCatalog, /x-relay-token/)
+  assert.match(watchdog, /agent\.run\.started/)
+  assert.match(watchdog, /agent\.execution\.heartbeat/)
+  assert.match(watchdog, /agent\.run\.completed/)
+  assert.match(watchdog, /stdio: 'inherit'/)
+  assert.doesNotMatch(watchdog, /command\.join/)
+  assert.match(watchdog, /EA_WATCHDOG_SPOOL_DIR/)
+  assert.match(docs, /Do not put a prompt, customer data, a path, or a secret in it\./)
 })
 
 test('controller scheduler records and delivers cooldown-aware state transitions', () => {

@@ -11,6 +11,7 @@ import {
   controllerJobConfigSchemas,
   type ControllerJobType,
   type CronDeadlineConfig,
+  type AgentRunDeadlineConfig,
   type DeadLetterConfig,
   type HealthPingConfig,
 } from '@/lib/controller-jobs'
@@ -375,6 +376,12 @@ async function evaluateControllerJob(
     return evaluateDeadLetter(job.tenantId, parsed.data, now, startedAt)
   }
 
+  if (job.type === 'agent_run_deadline') {
+    const parsed = controllerJobConfigSchemas.agent_run_deadline.safeParse(job.config)
+    if (!parsed.success) return invalidConfigResult(now, startedAt, parsed.error.message)
+    return evaluateAgentRunDeadline(job.tenantId, parsed.data, now, startedAt)
+  }
+
   const parsed = controllerJobConfigSchemas.cron_deadline.safeParse(job.config)
   if (!parsed.success) return invalidConfigResult(now, startedAt, parsed.error.message)
   return evaluateCronDeadline(job.tenantId, parsed.data, now, startedAt)
@@ -471,6 +478,65 @@ async function evaluateCronDeadline(
       minimumEvents: config.minimumEvents,
       windowHours: config.windowHours,
       windowStart: windowStart.toISOString(),
+    },
+  })
+}
+
+async function evaluateAgentRunDeadline(
+  tenantId: string,
+  config: AgentRunDeadlineConfig,
+  now: Date,
+  startedAt: number
+) {
+  const deadline = new Date(now.getTime() - config.maximumRunMinutes * 60_000)
+  const deadlineIso = deadline.toISOString()
+  const overdue = await db.execute<{ correlationId: string; safeLabel: string | null; startedAt: Date }>(sql`
+    SELECT
+      started.tags->>'correlation_id' AS "correlationId",
+      started.tags->>'safe_label' AS "safeLabel",
+      started.occurred_at AS "startedAt"
+    FROM events AS started
+    WHERE started.tenant_id = ${tenantId}::uuid
+      AND started.source = ${config.providerId}
+      AND started.category = 'agent.run.started'
+      AND started.occurred_at <= ${deadlineIso}::timestamptz
+      AND started.tags ? 'correlation_id'
+      AND NOT EXISTS (
+        SELECT 1
+        FROM events AS terminal
+        WHERE terminal.tenant_id = started.tenant_id
+          AND terminal.source = started.source
+          AND terminal.tags->>'correlation_id' = started.tags->>'correlation_id'
+          AND terminal.category IN ('agent.run.completed', 'agent.run.failed', 'agent.run.aborted')
+          AND terminal.occurred_at >= started.occurred_at
+      )
+      AND NOT EXISTS (
+        SELECT 1
+        FROM events AS heartbeat
+        WHERE heartbeat.tenant_id = started.tenant_id
+          AND heartbeat.source = started.source
+          AND heartbeat.tags->>'correlation_id' = started.tags->>'correlation_id'
+          AND heartbeat.category = 'agent.execution.heartbeat'
+          AND heartbeat.occurred_at > ${deadlineIso}::timestamptz
+      )
+    ORDER BY started.occurred_at ASC
+    LIMIT 5
+  `)
+
+  return buildRunResult({
+    status: overdue.length > 0 ? 'alert' : 'ok',
+    outcome: overdue.length > 0 ? 'agent_run_overdue' : 'agent_runs_current',
+    now,
+    startedAt,
+    details: {
+      providerId: config.providerId,
+      maximumRunMinutes: config.maximumRunMinutes,
+      deadline: deadline.toISOString(),
+      overdueRuns: overdue.map((run) => ({
+        correlationId: run.correlationId,
+        safeLabel: run.safeLabel,
+        startedAt: run.startedAt instanceof Date ? run.startedAt.toISOString() : run.startedAt,
+      })),
     },
   })
 }
@@ -989,6 +1055,7 @@ function isControllerJobType(type: string): type is ControllerJobType {
   return type === 'health_ping' ||
     type === 'dead_letter' ||
     type === 'cron_deadline' ||
+    type === 'agent_run_deadline' ||
     type === 'deviation'
 }
 

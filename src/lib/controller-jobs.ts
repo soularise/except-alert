@@ -4,6 +4,7 @@ export const CONTROLLER_JOB_TYPES = [
   'health_ping',
   'dead_letter',
   'cron_deadline',
+  'agent_run_deadline',
   'deviation',
 ] as const
 
@@ -50,6 +51,11 @@ export const cronDeadlineConfigSchema = z.object({
   windowHours: boundedHours,
 })
 
+export const agentRunDeadlineConfigSchema = z.object({
+  providerId,
+  maximumRunMinutes: z.number().int().min(1).max(24 * 60),
+})
+
 export const deviationConfigSchema = z.object({
   providerId,
   sigmaThreshold: z.number().min(1).max(10),
@@ -61,6 +67,7 @@ export const controllerJobConfigSchemas = {
   health_ping: healthPingConfigSchema,
   dead_letter: deadLetterConfigSchema,
   cron_deadline: cronDeadlineConfigSchema,
+  agent_run_deadline: agentRunDeadlineConfigSchema,
   deviation: deviationConfigSchema,
 } as const
 
@@ -90,6 +97,7 @@ export type ControllerJobWrite = z.infer<typeof controllerJobWriteSchema>
 export type HealthPingConfig = z.infer<typeof healthPingConfigSchema>
 export type DeadLetterConfig = z.infer<typeof deadLetterConfigSchema>
 export type CronDeadlineConfig = z.infer<typeof cronDeadlineConfigSchema>
+export type AgentRunDeadlineConfig = z.infer<typeof agentRunDeadlineConfigSchema>
 export type DeviationConfig = z.infer<typeof deviationConfigSchema>
 
 export function parseControllerJobWrite(input: unknown) {

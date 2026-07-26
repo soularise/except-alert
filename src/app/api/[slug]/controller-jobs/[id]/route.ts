@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import { controllerJobs, tenantProviders } from '@/lib/db/schema'
 import { requireTenantAccess } from '@/lib/auth-guard'
 import { controllerJobWriteSchema, providerIdForControllerJob } from '@/lib/controller-jobs'
+import { controllerJobTypeIsSchemaCompatible } from '@/lib/controller-job-schema-compatibility'
 import { canCreateControllerJob, limitsFor } from '@/lib/plan-limits'
 import { sanitizeControllerJob } from '@/lib/controller-job-response'
 import { controllerActionIdsByJob, replaceControllerActionBindings } from '@/lib/controller-action-bindings'
@@ -74,6 +75,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       enabled: updates.enabled ?? existing.enabled,
       actionTemplateIds: updates.actionTemplateIds ?? existingBindings.get(existing.id) ?? [],
     })
+
+    if (!await controllerJobTypeIsSchemaCompatible(candidate.type)) {
+      return NextResponse.json({ error: 'AI work deadline requires the latest database migration.' }, { status: 409 })
+    }
 
     if (candidate.enabled && !canCreateControllerJob(access.tenant.plan, 0)) {
       const limit = limitsFor(access.tenant.plan).controllerJobs
