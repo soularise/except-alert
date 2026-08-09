@@ -193,7 +193,7 @@ export default function ProvidersPage() {
         return (
           <div key={provider.id} className="rounded-lg border bg-card">
             {/* Card header */}
-            <div className="flex items-start justify-between gap-4 p-4">
+            <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-start gap-3 min-w-0">
                 <span className="text-xl leading-none mt-0.5">{provider.icon}</span>
                 <div className="min-w-0">
@@ -233,7 +233,7 @@ export default function ProvidersPage() {
               </div>
 
               {canManage && (
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
                   {provider.configured ? (
                     <>
                       <Button
