@@ -45,3 +45,19 @@ test('logistics context displays Samsara vehicle and fault evidence when present
   assert.match(context, /label="Vehicle"/)
   assert.match(context, /label="Fault evidence"/)
 })
+
+test('Sensos temperature proof fields remain available in the logistics detail', () => {
+  const context = read('src/components/LogisticsContext.tsx')
+  const detail = read('src/components/EventDetail.tsx')
+
+  assert.match(context, /label="Provider"/)
+  assert.match(context, /label="Condition"/)
+  assert.match(context, /label="Temperature"/)
+  assert.match(context, /label="Allowed range"/)
+  assert.match(context, /label="Shipment"/)
+  assert.match(context, /label="Device"/)
+  assert.match(context, /label="Vendor alert"/)
+  assert.match(context, /label="Location source"/)
+  assert.match(detail, /Raw vs Normalized/)
+  assert.match(detail, /Audit Log/)
+})

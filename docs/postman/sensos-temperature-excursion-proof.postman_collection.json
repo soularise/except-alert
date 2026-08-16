@@ -1,0 +1,59 @@
+{
+  "info": {
+    "_postman_id": "38b2c03d-bb88-427f-a133-8a94d78bdd30",
+    "name": "ER-0022 Sensos Temperature Excursion Proof",
+    "description": "Narrow local Sensos TemperatureBreach proof only. Payloads are published-reference or demo-derived fixtures, not captured production payloads. This does not claim broad Sensos or SenseAware support.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Accepted | TemperatureBreach",
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('authenticated Sensos temperature breach is processed', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.eql('processed'); });",
+        "pm.test('Relay produces the narrow Sensos temperature category', () => { const normalized = pm.response.json().normalized; pm.expect(normalized.source).to.eql('sensos'); pm.expect(normalized.category).to.eql('sensos.temperature_excursion'); pm.expect(normalized.severity).to.eql('critical'); pm.expect(normalized.tags.logistics.alertId).to.eql(pm.environment.get('sensos_alert_id')); });"
+      ], "type": "text/javascript" } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "x-relay-token", "value": "{{sensos_webhook_secret}}" }],
+        "body": { "mode": "raw", "raw": "{\n  \"id\": \"{{sensos_alert_id}}\",\n  \"scope\": { \"type\": \"Shipment\", \"id\": \"357aebc5-692d-4b25-87d0-fc9ee7b3ada9\" },\n  \"conditionType\": \"TemperatureBreach\",\n  \"severity\": \"Error\",\n  \"timestamp\": \"{{sensos_timestamp}}\",\n  \"properties\": { \"temperatureValue\": 43, \"minimumTemperatureThreshold\": 20, \"maximumTemperatureThreshold\": 40, \"allowedTemperatureTolerance\": 0 },\n  \"location\": { \"source\": \"Cellular\", \"latitude\": 55.83749771, \"longitude\": 12.54119396, \"accuracy\": 180 }\n}" },
+        "url": "{{relay_base_url}}/hook/{{tenant_key}}/sensos/sync"
+      }
+    },
+    {
+      "name": "Duplicate | same alert ID",
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('same Sensos alert ID is idempotent', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.eql('duplicate'); });"
+      ], "type": "text/javascript" } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "x-relay-token", "value": "{{sensos_webhook_secret}}" }],
+        "body": { "mode": "raw", "raw": "{\n  \"id\": \"{{sensos_alert_id}}\",\n  \"scope\": { \"type\": \"Shipment\", \"id\": \"357aebc5-692d-4b25-87d0-fc9ee7b3ada9\" },\n  \"conditionType\": \"TemperatureBreach\",\n  \"severity\": \"Error\",\n  \"timestamp\": \"{{sensos_timestamp}}\",\n  \"properties\": { \"temperatureValue\": 43, \"minimumTemperatureThreshold\": 20, \"maximumTemperatureThreshold\": 40, \"allowedTemperatureTolerance\": 0 },\n  \"location\": { \"source\": \"Cellular\", \"latitude\": 55.83749771, \"longitude\": 12.54119396, \"accuracy\": 180 }\n}" },
+        "url": "{{relay_base_url}}/hook/{{tenant_key}}/sensos/sync"
+      }
+    },
+    {
+      "name": "Rejected | unsupported condition",
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('unsupported Sensos condition fails closed', () => { pm.response.to.have.status(200); const response = pm.response.json(); pm.expect(response.status).to.eql('failed'); pm.expect(response.normalized.category).to.be.undefined; });"
+      ], "type": "text/javascript" } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "x-relay-token", "value": "{{sensos_webhook_secret}}" }],
+        "body": { "mode": "raw", "raw": "{\n  \"id\": \"{{sensos_unsupported_alert_id}}\",\n  \"scope\": { \"type\": \"Shipment\", \"id\": \"357aebc5-692d-4b25-87d0-fc9ee7b3ada9\" },\n  \"conditionType\": \"HumidityBreach\",\n  \"severity\": \"Error\",\n  \"timestamp\": \"{{sensos_timestamp}}\",\n  \"properties\": { \"temperatureValue\": 43, \"minimumTemperatureThreshold\": 20, \"maximumTemperatureThreshold\": 40, \"allowedTemperatureTolerance\": 0 },\n  \"location\": { \"source\": \"Cellular\", \"latitude\": 55.83749771, \"longitude\": 12.54119396, \"accuracy\": 180 }\n}" },
+        "url": "{{relay_base_url}}/hook/{{tenant_key}}/sensos/sync"
+      }
+    },
+    {
+      "name": "Rejected | invalid token",
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('invalid Sensos token is rejected', () => { pm.response.to.have.status(401); });"
+      ], "type": "text/javascript" } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "x-relay-token", "value": "not-{{sensos_webhook_secret}}" }],
+        "body": { "mode": "raw", "raw": "{ \"id\": \"{{sensos_alert_id}}\", \"conditionType\": \"TemperatureBreach\" }" },
+        "url": "{{relay_base_url}}/hook/{{tenant_key}}/sensos"
+      }
+    }
+  ]
+}
