@@ -15,7 +15,20 @@ type Logistics = {
   alertId?: string
   deviceId?: string
   shipmentId?: string
+  eventId?: string
+  organizationId?: string
   condition?: string
+  vehicle?: {
+    id?: string
+    name?: string
+    serial?: string
+    vin?: string
+  }
+  fault?: {
+    condition?: string
+    details?: string
+    summary?: string
+  }
   temperature?: {
     value?: number
     unit?: string
@@ -48,13 +61,32 @@ function parseLogistics(tags: unknown): Logistics | null {
   const raw = tags.logistics
   const temperature = isRecord(raw.temperature) ? raw.temperature : null
   const location = isRecord(raw.location) ? raw.location : null
+  const vehicle = isRecord(raw.vehicle) ? raw.vehicle : null
+  const fault = isRecord(raw.fault) ? raw.fault : null
 
   return {
     provider: asString(raw.provider),
     alertId: asString(raw.alertId),
     deviceId: asString(raw.deviceId),
     shipmentId: asString(raw.shipmentId),
+    eventId: asString(raw.eventId),
+    organizationId: raw.organizationId === undefined ? undefined : String(raw.organizationId),
     condition: asString(raw.condition),
+    vehicle: vehicle
+      ? {
+          id: vehicle.id === undefined ? undefined : String(vehicle.id),
+          name: asString(vehicle.name),
+          serial: asString(vehicle.serial),
+          vin: asString(vehicle.vin),
+        }
+      : undefined,
+    fault: fault
+      ? {
+          condition: asString(fault.condition),
+          details: asString(fault.details),
+          summary: asString(fault.summary),
+        }
+      : undefined,
     temperature: temperature
       ? {
           value: asNumber(temperature.value),
@@ -120,6 +152,15 @@ export function LogisticsContext({ tags }: LogisticsContextProps) {
           <Detail label="Shipment" value={logistics.shipmentId} />
           <Detail label="Device" value={logistics.deviceId} />
           <Detail label="Vendor alert" value={logistics.alertId} />
+          <Detail label="Event ID" value={logistics.eventId} />
+          <Detail label="Organization" value={logistics.organizationId} />
+          <Detail label="Vehicle" value={logistics.vehicle?.name} />
+          <Detail label="Vehicle ID" value={logistics.vehicle?.id} />
+          <Detail label="Vehicle serial" value={logistics.vehicle?.serial} />
+          <Detail label="Vehicle VIN" value={logistics.vehicle?.vin} />
+          <Detail label="Fault condition" value={logistics.fault?.condition} />
+          <Detail label="Fault summary" value={logistics.fault?.summary} />
+          <Detail label="Fault evidence" value={logistics.fault?.details} />
           <Detail label="Location source" value={location?.source} />
           <Detail label="Location accuracy" value={typeof location?.accuracy === 'number' ? `${location.accuracy} m` : undefined} />
         </dl>

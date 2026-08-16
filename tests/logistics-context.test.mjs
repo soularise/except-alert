@@ -21,7 +21,7 @@ test('logistics events render reusable shipment context and a map fallback', () 
   assert.match(map, /CircleMarker/)
 })
 
-test('Tive and Sensos are available as logistics webhook sources', () => {
+test('Tive, Sensos, and the labelled local Samsara proof are available as logistics webhook sources', () => {
   const providers = read('src/lib/providers.ts')
   const tive = providers.slice(providers.indexOf("id: 'tive'"), providers.indexOf("id: 'sensos'"))
   const sensos = providers.slice(providers.indexOf("id: 'sensos'"), providers.indexOf("id: 'pagerduty'"))
@@ -32,4 +32,16 @@ test('Tive and Sensos are available as logistics webhook sources', () => {
   assert.match(sensos, /signatureAlgorithm: 'header-token'/)
   assert.match(sensos, /x-relay-token/)
   assert.match(sensos, /sensos\.temperature_excursion/)
+  const samsara = providers.slice(providers.indexOf("id: 'samsara'"), providers.indexOf("id: 'pagerduty'"))
+  assert.match(samsara, /signatureAlgorithm: 'samsara'/)
+  assert.match(samsara, /X-Samsara-Signature/)
+  assert.match(samsara, /samsara\.vehicle\.fault_detected/)
+  assert.match(samsara, /Production readiness requires a sanitized Alert Webhooks 2\.0 payload/)
+})
+
+test('logistics context displays Samsara vehicle and fault evidence when present', () => {
+  const context = read('src/components/LogisticsContext.tsx')
+  assert.match(context, /label="Event ID"/)
+  assert.match(context, /label="Vehicle"/)
+  assert.match(context, /label="Fault evidence"/)
 })

@@ -1,0 +1,88 @@
+{
+  "info": {
+    "name": "ER-0020 Samsara Vehicle Fault Proof",
+    "description": "Synthetic/local Samsara Webhooks 1.0-shape proof based on ER-0019 research and official documentation. It is not production-grade Samsara support. Production readiness requires a sanitized representative Alert Webhooks 2.0 payload.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Samsara synthetic DeviceHasVehicleFault",
+      "item": [
+        {
+          "name": "Accept | signed DeviceHasVehicleFault",
+          "event": [
+            { "listen": "prerequest", "script": { "exec": [
+              "const CryptoJS = require('npm:crypto-js@4.2.0');",
+              "const secret = pm.environment.get('samsara_webhook_secret');",
+              "if (!secret) throw new Error('Set samsara_webhook_secret to the Base64 webhook secret.');",
+              "const timestamp = String(Math.floor(Date.now() / 1000));",
+              "const body = pm.variables.replaceIn(pm.request.body.raw);",
+              "const secretBytes = CryptoJS.enc.Base64.parse(secret);",
+              "const signature = CryptoJS.HmacSHA256(`v1:${timestamp}:${body}`, secretBytes).toString(CryptoJS.enc.Hex);",
+              "pm.environment.set('samsara_timestamp', timestamp);",
+              "pm.environment.set('samsara_signature', `v1=${signature}`);",
+              "pm.request.headers.upsert({ key: 'X-Samsara-Timestamp', value: timestamp });",
+              "pm.request.headers.upsert({ key: 'X-Samsara-Signature', value: `v1=${signature}` });"
+            ] } },
+            { "listen": "test", "script": { "exec": [
+              "pm.test('Samsara synthetic fault is processed', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.eql('processed'); });",
+              "pm.test('Relay maps only the vehicle-fault category', () => { const normalized = pm.response.json().normalized; pm.expect(normalized.source).to.eql('samsara'); pm.expect(normalized.category).to.eql('samsara.vehicle.fault_detected'); pm.expect(normalized.tags.logistics.eventId).to.eql(pm.environment.get('samsara_event_id')); });"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "X-Samsara-Timestamp", "value": "set by pre-request script" }, { "key": "X-Samsara-Signature", "value": "set by pre-request script" }],
+            "body": { "mode": "raw", "raw": "{\n  \"eventId\": \"{{samsara_event_id}}\",\n  \"eventMs\": 1600792716481,\n  \"eventType\": \"Alert\",\n  \"event\": {\n    \"alertEventUrl\": \"https://cloud.samsara.example/alerts/synthetic-vehicle-fault\",\n    \"alertConditionDescription\": \"Vehicle has fault\",\n    \"alertConditionId\": \"DeviceHasVehicleFault\",\n    \"details\": \"SYNTHETIC LOCAL PROOF: Vehicle 'Little Red' reported a fault. SPN: 627, FMI: 4.\",\n    \"device\": { \"id\": 281474977075805, \"name\": \"Little Red\", \"serial\": \"SYNTHETIC-G9MTH7CNKZ\", \"vin\": \"SYNTHETIC-VIN-ONLY\" },\n    \"orgId\": 53729,\n    \"resolved\": false,\n    \"startMs\": 1600792612258,\n    \"summary\": \"Vehicle 'Little Red' reported a fault.\"\n  }\n}" },
+            "url": "{{relay_base_url}}/hook/{{tenant_key}}/samsara/sync"
+          }
+        },
+        {
+          "name": "Reject | invalid signature",
+          "event": [
+            { "listen": "prerequest", "script": { "exec": [
+              "const timestamp = String(Math.floor(Date.now() / 1000));",
+              "pm.environment.set('samsara_timestamp', timestamp);",
+              "pm.request.headers.upsert({ key: 'X-Samsara-Timestamp', value: timestamp });"
+            ] } },
+            { "listen": "test", "script": { "exec": ["pm.test('Invalid Samsara signature is rejected', () => { pm.response.to.have.status(401); pm.expect(pm.response.json().error).to.eql('signature mismatch'); });"] } }
+          ],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "X-Samsara-Timestamp", "value": "{{samsara_timestamp}}" }, { "key": "X-Samsara-Signature", "value": "v1=deadbeef" }], "body": { "mode": "raw", "raw": "{\"eventId\":\"invalid-signature-synthetic\"}" }, "url": "{{relay_base_url}}/hook/{{tenant_key}}/samsara" }
+        },
+        {
+          "name": "Reject | unsupported Samsara alert",
+          "event": [
+            { "listen": "prerequest", "script": { "exec": [
+              "const CryptoJS = require('npm:crypto-js@4.2.0');",
+              "const secret = pm.environment.get('samsara_webhook_secret');",
+              "if (!secret) throw new Error('Set samsara_webhook_secret to the Base64 webhook secret.');",
+              "const timestamp = String(Math.floor(Date.now() / 1000));",
+              "const body = pm.variables.replaceIn(pm.request.body.raw);",
+              "const signature = CryptoJS.HmacSHA256(`v1:${timestamp}:${body}`, CryptoJS.enc.Base64.parse(secret)).toString(CryptoJS.enc.Hex);",
+              "pm.request.headers.upsert({ key: 'X-Samsara-Timestamp', value: timestamp });",
+              "pm.request.headers.upsert({ key: 'X-Samsara-Signature', value: `v1=${signature}` });"
+            ] } },
+            { "listen": "test", "script": { "exec": ["pm.test('Unsupported Samsara alert fails closed', () => { pm.response.to.have.status(200); const response = pm.response.json(); pm.expect(response.status).to.eql('failed'); pm.expect(response.normalized.category).to.be.undefined; });"] } }
+          ],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "X-Samsara-Timestamp", "value": "set by pre-request script" }, { "key": "X-Samsara-Signature", "value": "set by pre-request script" }], "body": { "mode": "raw", "raw": "{\"eventId\":\"unsupported-synthetic\",\"event\":{\"alertConditionId\":\"DeviceSpeedAbove\",\"device\":{\"name\":\"Little Red\"},\"details\":\"SYNTHETIC LOCAL PROOF: unsupported alert\",\"startMs\":1600792612258}}" }, "url": "{{relay_base_url}}/hook/{{tenant_key}}/samsara/sync" }
+        },
+        {
+          "name": "Duplicate | repeat accepted eventId",
+          "event": [
+            { "listen": "prerequest", "script": { "exec": [
+              "const CryptoJS = require('npm:crypto-js@4.2.0');",
+              "const secret = pm.environment.get('samsara_webhook_secret');",
+              "if (!secret) throw new Error('Set samsara_webhook_secret to the Base64 webhook secret.');",
+              "const timestamp = String(Math.floor(Date.now() / 1000));",
+              "const body = pm.variables.replaceIn(pm.request.body.raw);",
+              "const signature = CryptoJS.HmacSHA256(`v1:${timestamp}:${body}`, CryptoJS.enc.Base64.parse(secret)).toString(CryptoJS.enc.Hex);",
+              "pm.request.headers.upsert({ key: 'X-Samsara-Timestamp', value: timestamp });",
+              "pm.request.headers.upsert({ key: 'X-Samsara-Signature', value: `v1=${signature}` });"
+            ] } },
+            { "listen": "test", "script": { "exec": ["pm.test('Repeated Samsara eventId is idempotent', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.eql('duplicate'); });"] } }
+          ],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "X-Samsara-Timestamp", "value": "set by pre-request script" }, { "key": "X-Samsara-Signature", "value": "set by pre-request script" }], "body": { "mode": "raw", "raw": "{\n  \"eventId\": \"{{samsara_event_id}}\",\n  \"eventMs\": 1600792716481,\n  \"eventType\": \"Alert\",\n  \"event\": {\n    \"alertEventUrl\": \"https://cloud.samsara.example/alerts/synthetic-vehicle-fault\",\n    \"alertConditionDescription\": \"Vehicle has fault\",\n    \"alertConditionId\": \"DeviceHasVehicleFault\",\n    \"details\": \"SYNTHETIC LOCAL PROOF: Vehicle 'Little Red' reported a fault. SPN: 627, FMI: 4.\",\n    \"device\": { \"id\": 281474977075805, \"name\": \"Little Red\", \"serial\": \"SYNTHETIC-G9MTH7CNKZ\", \"vin\": \"SYNTHETIC-VIN-ONLY\" },\n    \"orgId\": 53729,\n    \"resolved\": false,\n    \"startMs\": 1600792612258,\n    \"summary\": \"Vehicle 'Little Red' reported a fault.\"\n  }\n}" }, "url": "{{relay_base_url}}/hook/{{tenant_key}}/samsara/sync" }
+        }
+      ]
+    }
+  ]
+}

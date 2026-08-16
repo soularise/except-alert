@@ -6,7 +6,7 @@ export type ProviderDef = {
   icon: string
   description: string
   signatureHeader: string | null
-  signatureAlgorithm: 'stripe' | 'hmac-sha256' | 'raw-sha256' | 'tive' | 'header-token'
+  signatureAlgorithm: 'stripe' | 'hmac-sha256' | 'raw-sha256' | 'tive' | 'samsara' | 'header-token'
   signatureLabel: string
   secretRequired?: boolean
   secretLabel?: string
@@ -127,6 +127,23 @@ export const PROVIDERS: ProviderDef[] = [
     docsUrl: 'https://developers.sensos.io/docs/alerts-common-schema',
     eventCategories: [
       { value: 'sensos.temperature_excursion', label: 'Temperature Excursion' },
+    ],
+  },
+  {
+    id: 'samsara',
+    name: 'Samsara',
+    icon: '🚚',
+    description: 'Synthetic/local vehicle fault webhook proof only',
+    signatureHeader: 'X-Samsara-Signature',
+    signatureAlgorithm: 'samsara',
+    signatureLabel: 'Samsara signed webhook',
+    secretLabel: 'Samsara Webhook Secret',
+    secretPlaceholder: 'Base64 webhook secret from Samsara',
+    configHelp:
+      'Local proof only: Relay verifies X-Samsara-Timestamp and X-Samsara-Signature against the Base64 webhook secret. Only DeviceHasVehicleFault is accepted. Production readiness requires a sanitized Alert Webhooks 2.0 payload.',
+    docsUrl: 'https://developers.samsara.com/docs/webhooks',
+    eventCategories: [
+      { value: 'samsara.vehicle.fault_detected', label: 'Vehicle Fault Detected' },
     ],
   },
   {
