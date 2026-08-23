@@ -11,6 +11,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const base = `/${tenant.slug}/settings`
   const promotedPages: Record<string, string> = {
     [`${base}/providers`]: 'Sources',
+    [`${base}/domain-packs`]: 'Domain Packs',
     [`${base}/controller-jobs`]: 'Controllers',
   }
   const promotedTitle = promotedPages[pathname]

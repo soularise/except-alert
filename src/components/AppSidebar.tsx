@@ -20,6 +20,7 @@ import {
   Building2,
   Gauge,
   CircleHelp,
+  Boxes,
 } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { limitsFor } from '@/lib/plan-limits'
@@ -109,6 +110,7 @@ export function AppSidebar({
   }> = [
     { label: 'Events', href: `${base}/dashboard`, icon: LayoutDashboard },
     { label: 'Sources', href: `${base}/settings/providers`, icon: PlugZap },
+    { label: 'Domain Packs', href: `${base}/settings/domain-packs`, icon: Boxes },
     { label: 'Controllers', href: `${base}/settings/controller-jobs`, icon: Activity },
     { label: 'Actions', href: `${base}/templates`, icon: FileCode2 },
     { label: 'Alert Rules', href: `${base}/baselines`, icon: BarChart2 },

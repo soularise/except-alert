@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { useTenant } from '@/components/TenantProvider'
 import { UpgradeRequestButton } from '@/components/UpgradeRequestButton'
-import { DomainPackStatus } from '@/components/DomainPackStatus'
 
 type ProviderItem = {
   id: string
@@ -183,8 +182,6 @@ export default function ProvidersPage() {
           </div>
         )}
       </div>
-
-      <DomainPackStatus />
 
       {providers.map((provider) => {
         const isConfiguring = configuring === provider.id
