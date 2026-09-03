@@ -5,6 +5,12 @@ function titleCase(value: string) {
   return value.replaceAll('_', ' ')
 }
 
+function proofStatusLabel(proofStatus: (typeof DOMAIN_PACKS)[number]['proofStatus'], availability: string) {
+  if (proofStatus === 'locally_verified') return 'Local demo verified'
+  if (proofStatus === 'local_proof_validated') return 'Local proof validated'
+  return titleCase(availability)
+}
+
 export function DomainPackStatus() {
   return (
     <section className="rounded-lg border bg-card p-4" aria-labelledby="domain-packs-heading">
@@ -32,7 +38,7 @@ export function DomainPackStatus() {
                 variant={pack.availability === 'available' ? 'default' : 'secondary'}
                 className={pack.availability === 'available' ? 'bg-green-600 hover:bg-green-600' : undefined}
               >
-                {pack.proofStatus === 'locally_verified' ? 'Local demo verified' : titleCase(pack.availability)}
+                {proofStatusLabel(pack.proofStatus, pack.availability)}
               </Badge>
             </div>
 
@@ -47,6 +53,17 @@ export function DomainPackStatus() {
                     </div>
                     <code className="mt-1 block text-[11px] text-muted-foreground">{provider.normalizedEvent}</code>
                     <p className="mt-1 text-muted-foreground">{provider.evidenceLabel}. {provider.caveat}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {pack.proofDetails && (
+              <ul className="mt-3 space-y-2" aria-label={`${pack.title} proof maturity`}>
+                {pack.proofDetails.map((detail) => (
+                  <li key={detail.label} className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 rounded-md bg-muted/40 p-2 text-xs">
+                    <span className="font-medium text-foreground">{detail.label}</span>
+                    <span className="text-muted-foreground">{detail.status}</span>
                   </li>
                 ))}
               </ul>

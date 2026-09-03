@@ -1,5 +1,6 @@
 export type DomainPackAvailability = 'available' | 'planned'
 export type ProviderProofStatus = 'locally_verified'
+export type DomainPackProofStatus = ProviderProofStatus | 'local_proof_validated'
 export type ProviderEvidenceQualification =
   | 'derived_demo_proof'
   | 'synthetic_proof'
@@ -16,14 +17,20 @@ export type DomainPackProviderStatus = {
   caveat: string
 }
 
+export type DomainPackProofDetail = {
+  label: string
+  status: string
+}
+
 export type DomainPack = {
   id: 'logistics_ops' | 'engineering_ops' | 'app_saas_ops' | 'data_platform_ops' | 'agent_ops'
   title: string
   description: string
   availability: DomainPackAvailability
-  proofStatus?: ProviderProofStatus
+  proofStatus?: DomainPackProofStatus
   caveat: string
   providers?: readonly DomainPackProviderStatus[]
+  proofDetails?: readonly DomainPackProofDetail[]
 }
 
 // Catalog metadata only. Tenant enablement, source configuration, and current
@@ -94,8 +101,18 @@ export const DOMAIN_PACKS: readonly DomainPack[] = [
   {
     id: 'agent_ops',
     title: 'Agent Ops',
-    description: 'Agent lifecycle, run observability, checker-node, and sequence-detection monitoring.',
+    description: 'Run-level lifecycle, audit, replay, and read-only detail evidence validated with local fixtures. Not production verified.',
     availability: 'planned',
-    caveat: 'Planned only. Existing sources do not establish this domain pack or its proof status.',
+    proofStatus: 'local_proof_validated',
+    proofDetails: [
+      { label: 'Pack contract and run taxonomy', status: 'Defined' },
+      { label: 'Local proof harness', status: 'Validated' },
+      { label: '30-minute healthy run', status: 'Validated' },
+      { label: '90-minute failure-mode run', status: 'Validated' },
+      { label: 'Relay replay and audit', status: 'Local proof validated' },
+      { label: 'Read-only run detail', status: 'Development proof' },
+      { label: 'Native telemetry, Relay Collector, and controllers', status: 'Not verified or planned' },
+    ],
+    caveat: 'Local fixture proof only. Not production verified. No native telemetry proof, Collector implementation, production controller behavior, notifications/actions, security detection, or customer enablement.',
   },
 ]
