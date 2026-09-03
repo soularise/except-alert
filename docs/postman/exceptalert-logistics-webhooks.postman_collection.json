@@ -1,0 +1,303 @@
+{
+  "info": {
+    "_postman_id": "5367cf02-2022-4a70-8f66-25a824ca4ef2",
+    "name": "ExceptAlert VPS Logistics Webhooks",
+    "description": "Signed Tive and header-token Sensos webhook tests for Relay on the ExceptAlert VPS. The Delivery requests use the vendor-facing endpoint. The Inspect requests use /sync only so the normalized exception.v1 document can be asserted inline.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Relay health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{relay_base_url}}/health"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Relay is healthy', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(pm.response.json().status).to.eql('ok');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tive",
+      "item": [
+        {
+          "name": "Delivery | temperature excursion",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const CryptoJS = pm.require('npm:crypto-js@4.2.0');",
+                  "const secret = pm.variables.get('tive_webhook_secret');",
+                  "if (!secret) throw new Error('Set tive_webhook_secret in the selected environment.');",
+                  "const timestamp = new Date().toISOString().replace('T', ' ').replace(/\\.\\d{3}Z$/, 'Z');",
+                  "const body = pm.request.body.raw;",
+                  "const signature = CryptoJS.HmacSHA256(`${timestamp}.${body}`, secret).toString(CryptoJS.enc.Base64);",
+                  "pm.request.headers.upsert({ key: 'x-tive-signature', value: `t=${timestamp},v1=${signature}` });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Tive delivery is accepted', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const response = pm.response.json();",
+                  "  pm.expect(response.status).to.eql('accepted');",
+                  "  pm.expect(response.provider).to.eql('tive');",
+                  "  pm.expect(response.tenant).to.eql(pm.variables.get('tenant_key'));",
+                  "  pm.expect(response.hook_id).to.match(/^hook_/);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-tive-signature", "value": "set by pre-request script" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"EntityName\": \"TIVE-12345\",\n  \"AlertDate\": \"2026-07-14T14:30:00Z\",\n  \"AlertType\": \"Temperature\",\n  \"Alert\": {\n    \"AlertId\": \"postman-tive-temperature-excursion\",\n    \"DeviceId\": \"TIVE-12345\"\n  },\n  \"Temperature\": { \"Celsius\": 8.2 },\n  \"DeviceId\": \"TIVE-12345\",\n  \"DeviceName\": \"TIVE-12345\",\n  \"ShipmentId\": \"PO-98765\",\n  \"Location\": {\n    \"Latitude\": 28.5383,\n    \"Longitude\": -81.3792,\n    \"FormattedAddress\": \"Orlando, FL\",\n    \"LocationMethod\": \"gps\",\n    \"Accuracy\": { \"Meters\": 10 }\n  }\n}"
+            },
+            "url": "{{relay_base_url}}/hook/{{tenant_key}}/tive"
+          }
+        },
+        {
+          "name": "Inspect normalization | temperature excursion",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const CryptoJS = pm.require('npm:crypto-js@4.2.0');",
+                  "const secret = pm.variables.get('tive_webhook_secret');",
+                  "if (!secret) throw new Error('Set tive_webhook_secret in the selected environment.');",
+                  "const timestamp = new Date().toISOString().replace('T', ' ').replace(/\\.\\d{3}Z$/, 'Z');",
+                  "const body = pm.request.body.raw;",
+                  "const signature = CryptoJS.HmacSHA256(`${timestamp}.${body}`, secret).toString(CryptoJS.enc.Base64);",
+                  "pm.request.headers.upsert({ key: 'x-tive-signature', value: `t=${timestamp},v1=${signature}` });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Tive payload normalizes into a logistics exception', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const response = pm.response.json();",
+                  "  pm.expect(response.status).to.eql('processed');",
+                  "  pm.expect(response.normalized.source).to.eql('tive');",
+                  "  pm.expect(response.normalized.category).to.eql('tive.temperature_excursion');",
+                  "  pm.expect(response.normalized.severity).to.eql('critical');",
+                  "  pm.expect(response.normalized.tags.logistics.provider).to.eql('tive');",
+                  "  pm.expect(response.normalized.tags.logistics.temperature.value).to.eql(8.2);",
+                  "  pm.expect(response.normalized.tags.logistics.location.latitude).to.eql(28.5383);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-tive-signature", "value": "set by pre-request script" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"EntityName\": \"TIVE-12346\",\n  \"AlertDate\": \"2026-07-14T14:31:00Z\",\n  \"AlertType\": \"Temperature\",\n  \"Alert\": { \"AlertId\": \"postman-tive-inspect\", \"DeviceId\": \"TIVE-12346\" },\n  \"Temperature\": { \"Celsius\": 8.2 },\n  \"DeviceId\": \"TIVE-12346\",\n  \"DeviceName\": \"TIVE-12346\",\n  \"ShipmentId\": \"PO-98765\",\n  \"Location\": { \"Latitude\": 28.5383, \"Longitude\": -81.3792, \"FormattedAddress\": \"Orlando, FL\", \"LocationMethod\": \"gps\", \"Accuracy\": { \"Meters\": 10 } }\n}"
+            },
+            "url": "{{relay_base_url}}/hook/{{tenant_key}}/tive/sync"
+          }
+        },
+        {
+          "name": "Reject | invalid signature",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invalid Tive signature is rejected', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().error).to.eql('signature mismatch');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-tive-signature", "value": "t=2026-07-15 12:00:00Z,v1=invalid-signature" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"EntityName\":\"TIVE-REJECT\"}" },
+            "url": "{{relay_base_url}}/hook/{{tenant_key}}/tive"
+          }
+        },
+        {
+          "name": "Reject | stale signature",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const CryptoJS = pm.require('npm:crypto-js@4.2.0');",
+                  "const secret = pm.variables.get('tive_webhook_secret');",
+                  "if (!secret) throw new Error('Set tive_webhook_secret in the selected environment.');",
+                  "const timestamp = '1970-01-01 00:00:00Z';",
+                  "const body = pm.request.body.raw;",
+                  "const signature = CryptoJS.HmacSHA256(`${timestamp}.${body}`, secret).toString(CryptoJS.enc.Base64);",
+                  "pm.request.headers.upsert({ key: 'x-tive-signature', value: `t=${timestamp},v1=${signature}` });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Stale Tive signature is rejected', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().error).to.eql('signature mismatch');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-tive-signature", "value": "set by pre-request script" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"EntityName\":\"TIVE-STALE\"}" },
+            "url": "{{relay_base_url}}/hook/{{tenant_key}}/tive"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sensos",
+      "item": [
+        {
+          "name": "Delivery | temperature excursion",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Sensos delivery is accepted', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const response = pm.response.json();",
+                  "  pm.expect(response.status).to.eql('accepted');",
+                  "  pm.expect(response.provider).to.eql('sensos');",
+                  "  pm.expect(response.tenant).to.eql(pm.variables.get('tenant_key'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-relay-token", "value": "{{sensos_webhook_secret}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"postman-sensos-temperature-excursion\",\n  \"scope\": { \"type\": \"Shipment\", \"id\": \"SENSOS-SHIPMENT-98765\" },\n  \"conditionType\": \"TemperatureBreach\",\n  \"severity\": \"Error\",\n  \"timestamp\": \"2026-07-14T14:30:00.000Z\",\n  \"properties\": {\n    \"temperatureValue\": 43,\n    \"minimumTemperatureThreshold\": 20,\n    \"maximumTemperatureThreshold\": 40,\n    \"allowedTemperatureTolerance\": 0\n  },\n  \"location\": { \"source\": \"Cellular\", \"latitude\": 55.83749771, \"longitude\": 12.54119396, \"accuracy\": 180 }\n}"
+            },
+            "url": "{{relay_base_url}}/hook/{{tenant_key}}/sensos"
+          }
+        },
+        {
+          "name": "Inspect normalization | temperature excursion",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Sensos payload normalizes into a logistics exception', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const response = pm.response.json();",
+                  "  pm.expect(response.status).to.eql('processed');",
+                  "  pm.expect(response.normalized.source).to.eql('sensos');",
+                  "  pm.expect(response.normalized.category).to.eql('sensos.temperature_excursion');",
+                  "  pm.expect(response.normalized.severity).to.eql('critical');",
+                  "  pm.expect(response.normalized.tags.logistics.provider).to.eql('sensos');",
+                  "  pm.expect(response.normalized.tags.logistics.temperature.minimum).to.eql(20);",
+                  "  pm.expect(response.normalized.tags.logistics.temperature.maximum).to.eql(40);",
+                  "  pm.expect(response.normalized.tags.logistics.location.longitude).to.eql(12.54119396);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-relay-token", "value": "{{sensos_webhook_secret}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"postman-sensos-inspect\",\n  \"scope\": { \"type\": \"Shipment\", \"id\": \"SENSOS-SHIPMENT-98765\" },\n  \"conditionType\": \"TemperatureBreach\",\n  \"severity\": \"Error\",\n  \"timestamp\": \"2026-07-14T14:31:00.000Z\",\n  \"properties\": { \"temperatureValue\": 43, \"minimumTemperatureThreshold\": 20, \"maximumTemperatureThreshold\": 40, \"allowedTemperatureTolerance\": 0 },\n  \"location\": { \"source\": \"Cellular\", \"latitude\": 55.83749771, \"longitude\": 12.54119396, \"accuracy\": 180 }\n}"
+            },
+            "url": "{{relay_base_url}}/hook/{{tenant_key}}/sensos/sync"
+          }
+        },
+        {
+          "name": "Reject | invalid token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invalid Sensos token is rejected', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().error).to.eql('signature mismatch');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-relay-token", "value": "definitely-not-the-configured-token" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"id\":\"postman-sensos-reject\"}" },
+            "url": "{{relay_base_url}}/hook/{{tenant_key}}/sensos"
+          }
+        }
+      ]
+    }
+  ]
+}
