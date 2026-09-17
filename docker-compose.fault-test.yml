@@ -1,0 +1,61 @@
+# Development-only isolated Relay fault-test stack.
+# Always invoke with: docker compose -p er0050-fault -f docker-compose.fault-test.yml ...
+services:
+  postgres-fault:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: relay
+      POSTGRES_PASSWORD: relay
+      POSTGRES_DB: relay_fault
+    ports:
+      - "15432:5432"
+    volumes:
+      - er0050_fault_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U relay -d relay_fault"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: "no"
+
+  relay-fault:
+    build: ../relay
+    environment:
+      DATABASE_URL: postgres://relay:relay@postgres-fault:5432/relay_fault
+      RELAY_PORT: "3800"
+    ports:
+      - "13800:3800"
+    volumes:
+      - er0050_fault_relay_audit:/app/data/audit
+    depends_on:
+      postgres-fault:
+        condition: service_healthy
+    restart: "no"
+
+  exceptalert-fault:
+    profiles: ["exceptalert"]
+    build:
+      context: .
+      args:
+        DATABASE_URL: postgres://relay:relay@postgres-fault:5432/relay_fault
+        BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-except-alert-local-dev-secret-change-me}
+        BETTER_AUTH_URL: http://localhost:13000
+    ports:
+      - "13000:3000"
+    environment:
+      DATABASE_URL: postgres://relay:relay@postgres-fault:5432/relay_fault
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-except-alert-local-dev-secret-change-me}
+      BETTER_AUTH_URL: http://localhost:13000
+      EXCEPTALERT_APP_URL: http://localhost:13000
+      RELAY_URL: http://relay-fault:3800
+      NODE_ENV: production
+    depends_on:
+      postgres-fault:
+        condition: service_healthy
+      relay-fault:
+        condition: service_started
+    restart: "no"
+
+volumes:
+  er0050_fault_postgres_data:
+  er0050_fault_relay_audit:

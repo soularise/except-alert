@@ -40,6 +40,8 @@ ExceptAlert is a read-mostly consumer of Relay's `events` table. It owns `action
 
 The `docker-compose.yml` in this repo runs ExceptAlert, Relay, and Postgres together.
 
+For development-only, isolated Relay fault testing that does not reuse this stack or its database volume, see [the local fault-test stack runbook](docs/local-fault-test-stack.md).
+
 > **Prerequisite:** Clone both `relay` and `except-alert` into sibling directories. The Compose file builds Relay from `../relay`.
 
 ```bash
