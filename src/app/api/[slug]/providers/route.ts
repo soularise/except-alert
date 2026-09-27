@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { tenantProviders } from '@/lib/db/schema'
 import { requireTenantAccess } from '@/lib/auth-guard'
-import { PROVIDERS } from '@/lib/providers'
+import { PROVIDERS, countsTowardProviderLimit } from '@/lib/providers'
 import { resolveRelayUrl } from '@/lib/relay-url'
 import { limitsFor } from '@/lib/plan-limits'
 
@@ -48,7 +48,7 @@ export async function GET(
       providers,
       plan: access.tenant.plan,
       providerLimit: limitsFor(access.tenant.plan).providers,
-      configuredProviderCount: rows.length,
+      configuredProviderCount: rows.filter((r) => countsTowardProviderLimit(r.providerId)).length,
     })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

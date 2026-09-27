@@ -15,6 +15,8 @@ export type ProviderDef = {
   docsUrl: string
   eventCategories: EventCategory[]
   hidden?: boolean
+  /** Site/system infrastructure only; never set on customer integrations. */
+  excludedFromProviderLimit?: true
 }
 
 export const PROVIDERS: ProviderDef[] = [
@@ -257,6 +259,7 @@ export const PROVIDERS: ProviderDef[] = [
   {
     id: 'contact',
     hidden: true,
+    excludedFromProviderLimit: true,
     name: 'Contact Form',
     icon: '✉️',
     description: 'Landing page contact form inquiries',
@@ -272,3 +275,12 @@ export const PROVIDERS: ProviderDef[] = [
     ],
   },
 ]
+
+/** Unsigned delivery is allowed only for secret-optional providers registered without a secret. */
+export function allowsUnsigned(provider: ProviderDef, secret: string): boolean {
+  return provider.secretRequired === false && secret.trim() === ''
+}
+
+export function countsTowardProviderLimit(providerId: string): boolean {
+  return PROVIDERS.find((p) => p.id === providerId)?.excludedFromProviderLimit !== true
+}

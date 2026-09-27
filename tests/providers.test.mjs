@@ -32,7 +32,7 @@ test('supabase is available as an optional-secret provider', () => {
   assert.match(listRoute, /secretRequired: p\.secretRequired \?\? true/)
   assert.match(listRoute, /resolveRelayUrl\(request\)/)
   assert.match(listRoute, /providerLimit: limitsFor\(access\.tenant\.plan\)\.providers/)
-  assert.match(listRoute, /configuredProviderCount: rows\.length/)
+  assert.match(listRoute, /configuredProviderCount: rows\.filter\(\(r\) => countsTowardProviderLimit\(r\.providerId\)\)\.length/)
   assert.match(detailRoute, /resolveRelayUrl\(request\)/)
   assert.match(detailRoute, /secretRequired && !secret_key\.trim\(\) && !existing/)
   assert.match(testRoute, /enforcePersistentRateLimit/)

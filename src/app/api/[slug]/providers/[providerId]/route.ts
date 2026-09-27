@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { and, count, eq, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { tenantProviders } from '@/lib/db/schema'
 import { requireTenantAccess } from '@/lib/auth-guard'
-import { PROVIDERS } from '@/lib/providers'
+import { PROVIDERS, allowsUnsigned, countsTowardProviderLimit } from '@/lib/providers'
 import { resolveRelayUrl } from '@/lib/relay-url'
 import { canConfigureProvider, limitsFor } from '@/lib/plan-limits'
 
@@ -89,18 +89,21 @@ export async function PUT(request: NextRequest, { params }: Params) {
       }
 
       if (!existing) {
-        const [providerResult] = await tx
-          .select({ value: count() })
+        const providerRows = await tx
+          .select({ providerId: tenantProviders.providerId })
           .from(tenantProviders)
           .where(eq(tenantProviders.tenantId, access.tenant.id))
 
-        const configuredProviders = providerResult?.value ?? 0
+        const configuredProviders = providerRows.filter((row) =>
+          countsTowardProviderLimit(row.providerId)
+        ).length
         if (!canConfigureProvider(access.tenant.plan, configuredProviders)) {
           throw new Error('provider_limit')
         }
       }
 
       const nextSecret = secret_key.trim() || existing?.secretKey || ''
+      const allowUnsigned = allowsUnsigned(providerDef, nextSecret)
 
       await tx
         .insert(tenantProviders)
@@ -110,7 +113,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
           secretKey: nextSecret,
           signatureHeader: providerDef.signatureHeader,
           signatureAlgorithm: providerDef.signatureAlgorithm,
-          config: {},
+          config: { allow_unsigned: allowUnsigned },
         })
         .onConflictDoUpdate({
           target: [tenantProviders.tenantId, tenantProviders.providerId],
@@ -118,6 +121,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
             secretKey: nextSecret,
             signatureHeader: providerDef.signatureHeader,
             signatureAlgorithm: providerDef.signatureAlgorithm,
+            config: sql`COALESCE(${tenantProviders.config}, '{}'::jsonb) || jsonb_build_object('allow_unsigned', ${allowUnsigned}::boolean)`,
           },
         })
     })
