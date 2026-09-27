@@ -59,7 +59,8 @@ type JobDraft = {
   url: string
   expectedStatus: string
   timeoutMs: string
-  maximumSilenceHours: string
+  maximumSilence: string
+  silenceUnit: 'minutes' | 'hours'
   minimumEvents: string
   windowHours: string
   maximumRunMinutes: string
@@ -78,7 +79,8 @@ const DEFAULT_DRAFT: JobDraft = {
   url: 'https://',
   expectedStatus: '200',
   timeoutMs: '5000',
-  maximumSilenceHours: '24',
+  maximumSilence: '24',
+  silenceUnit: 'hours',
   minimumEvents: '1',
   windowHours: '24',
   maximumRunMinutes: '30',
@@ -187,7 +189,9 @@ export default function ControllerJobsPage() {
         ...base,
         config: {
           providerId: draft.providerId,
-          maximumSilenceHours: Number(draft.maximumSilenceHours),
+          [draft.silenceUnit === 'minutes' ? 'maximumSilenceMinutes' : 'maximumSilenceHours']: Number(
+            draft.maximumSilence
+          ),
         },
       }
     }
@@ -676,12 +680,28 @@ function ProviderJobFields({
       </div>
 
       {draft.type === 'dead_letter' && (
-        <NumberField
-          id="controller-silence"
-          label="Maximum silence hours"
-          value={draft.maximumSilenceHours}
-          onChange={(value) => updateDraft('maximumSilenceHours', value)}
-        />
+        <div className="grid grid-cols-[1fr_8rem] items-end gap-2">
+          <NumberField
+            id="controller-silence"
+            label="Maximum silence"
+            value={draft.maximumSilence}
+            onChange={(value) => updateDraft('maximumSilence', value)}
+          />
+          <Select
+            value={draft.silenceUnit}
+            onValueChange={(value) => {
+              if (value === 'minutes' || value === 'hours') updateDraft('silenceUnit', value)
+            }}
+          >
+            <SelectTrigger aria-label="Silence unit" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="minutes">Minutes</SelectItem>
+              <SelectItem value="hours">Hours</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       )}
 
       {draft.type === 'cron_deadline' && (
@@ -875,11 +895,15 @@ function jobToDraft(job: ControllerJob): JobDraft {
     return {
       ...draft,
       providerId: stringConfig(config, 'providerId', ''),
-      maximumSilenceHours: stringConfig(
-        config,
-        'maximumSilenceHours',
-        DEFAULT_DRAFT.maximumSilenceHours
-      ),
+      ...(config.maximumSilenceMinutes !== undefined
+        ? {
+            maximumSilence: stringConfig(config, 'maximumSilenceMinutes', DEFAULT_DRAFT.maximumSilence),
+            silenceUnit: 'minutes' as const,
+          }
+        : {
+            maximumSilence: stringConfig(config, 'maximumSilenceHours', DEFAULT_DRAFT.maximumSilence),
+            silenceUnit: 'hours' as const,
+          }),
     }
   }
 

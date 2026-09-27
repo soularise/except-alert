@@ -9,6 +9,7 @@ import { sendTenantAlertNotifications } from '@/lib/notifications'
 import { dispatchControllerActions } from '@/lib/controller-actions'
 import {
   controllerJobConfigSchemas,
+  deadLetterSilenceMs,
   type ControllerJobType,
   type CronDeadlineConfig,
   type AgentRunDeadlineConfig,
@@ -393,7 +394,7 @@ async function evaluateDeadLetter(
   now: Date,
   startedAt: number
 ) {
-  const windowStart = new Date(now.getTime() - config.maximumSilenceHours * 60 * 60_000)
+  const windowStart = new Date(now.getTime() - deadLetterSilenceMs(config))
   const eventCount = await countProviderEvents(tenantId, config.providerId, windowStart)
   const status = eventCount === 0 ? 'alert' : 'ok'
 
@@ -406,6 +407,7 @@ async function evaluateDeadLetter(
       providerId: config.providerId,
       eventCount,
       maximumSilenceHours: config.maximumSilenceHours,
+      maximumSilenceMinutes: config.maximumSilenceMinutes,
       windowStart: windowStart.toISOString(),
     },
   })

@@ -40,10 +40,16 @@ export const healthPingConfigSchema = z.object({
   expectedStatus: z.number().int().min(100).max(599),
 })
 
-export const deadLetterConfigSchema = z.object({
-  providerId,
-  maximumSilenceHours: boundedHours,
-})
+export const deadLetterConfigSchema = z
+  .object({
+    providerId,
+    maximumSilenceHours: boundedHours.optional(),
+    maximumSilenceMinutes: z.number().int().min(2).max(24 * 60 * 30).optional(),
+  })
+  .refine(
+    (config) => (config.maximumSilenceHours === undefined) !== (config.maximumSilenceMinutes === undefined),
+    { message: 'Set exactly one of maximumSilenceHours or maximumSilenceMinutes' }
+  )
 
 export const cronDeadlineConfigSchema = z.object({
   providerId,
@@ -99,6 +105,11 @@ export type DeadLetterConfig = z.infer<typeof deadLetterConfigSchema>
 export type CronDeadlineConfig = z.infer<typeof cronDeadlineConfigSchema>
 export type AgentRunDeadlineConfig = z.infer<typeof agentRunDeadlineConfigSchema>
 export type DeviationConfig = z.infer<typeof deviationConfigSchema>
+
+export function deadLetterSilenceMs(config: DeadLetterConfig) {
+  if (config.maximumSilenceMinutes !== undefined) return config.maximumSilenceMinutes * 60_000
+  return (config.maximumSilenceHours ?? 0) * 60 * 60_000
+}
 
 export function parseControllerJobWrite(input: unknown) {
   return controllerJobWriteSchema.parse(input)
