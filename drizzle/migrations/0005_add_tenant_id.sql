@@ -5,9 +5,10 @@ ALTER TABLE action_templates ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES 
 ALTER TABLE baselines        ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES tenants(id);
 
 -- Seed default tenant (backward-compat for auth-disabled mode)
-INSERT INTO tenants (id, name, slug) VALUES
-  ('00000000-0000-0000-0000-000000000001', 'Default', 'default')
-ON CONFLICT DO NOTHING;
+-- Skipped when the default tenant exists (Relay seeds it with an ingress_key this insert cannot supply).
+INSERT INTO tenants (id, name, slug)
+SELECT '00000000-0000-0000-0000-000000000001', 'Default', 'default'
+WHERE NOT EXISTS (SELECT 1 FROM tenants WHERE id = '00000000-0000-0000-0000-000000000001');
 
 -- Backfill existing rows
 UPDATE events           SET tenant_id = '00000000-0000-0000-0000-000000000001' WHERE tenant_id IS NULL;

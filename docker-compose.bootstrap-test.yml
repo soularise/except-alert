@@ -1,0 +1,43 @@
+# Disposable ER-0060 clean-room stack for the Relay-first bootstrap. Development only.
+# Driven by scripts/bootstrap-cleanroom.mjs; do not start it by hand against anything else.
+# Relay sits on an internal-only network, so it has no route off this project even though the checked-in
+# relay.yaml names a non-local database; its DATABASE_URL environment override points it at postgres below.
+name: er0060-bootstrap
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: relay
+      POSTGRES_PASSWORD: relay
+      POSTGRES_DB: er0060_bootstrap
+    ports:
+      - "127.0.0.1:15433:5432"
+    volumes:
+      - er0060_bootstrap_pgdata:/var/lib/postgresql/data
+    networks: [dbnet, hostnet]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U relay -d er0060_bootstrap"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: "no"
+
+  relay:
+    image: ${RELAY_IMAGE:?set RELAY_IMAGE to the pinned, locally built Relay image tag}
+    environment:
+      DATABASE_URL: postgres://relay:relay@postgres:5432/er0060_bootstrap
+      RELAY_PORT: "3800"
+    networks: [dbnet]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+networks:
+  dbnet:
+    internal: true
+  hostnet: {}
+
+volumes:
+  er0060_bootstrap_pgdata:
