@@ -38,6 +38,7 @@ function buildUrl(slug: string, filters: Filters, page: number, pageSize: number
   if (filters.severity) params.set('severity', filters.severity)
   if (filters.category) params.set('category', filters.category)
   if (filters.status) params.set('status', filters.status)
+  if (filters.includeHeartbeats) params.set('includeHeartbeats', filters.includeHeartbeats)
   params.set('limit', String(pageSize))
   params.set('offset', String((page - 1) * pageSize))
   const qs = params.toString()

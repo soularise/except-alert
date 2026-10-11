@@ -1,8 +1,9 @@
-import { count, eq, and, inArray, not } from 'drizzle-orm'
+import { count, eq, and, inArray, not, notInArray, type SQL } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { events, tenantProviders, tenants } from '@/lib/db/schema'
 import { getMonthlyExternalEventUsage } from '@/lib/event-usage'
 import { limitsFor } from '@/lib/plan-limits'
+import { HEARTBEAT_PROVIDER_IDS, wantsHeartbeats } from '@/lib/providers'
 import { getServerTenantId } from '@/lib/tenancy'
 import { DashboardClient } from '@/components/DashboardClient'
 import { PageHeader } from '@/components/PageHeader'
@@ -14,10 +15,15 @@ interface DashboardPageProps {
     severity?: string
     category?: string
     status?: string
+    includeHeartbeats?: string
   }>
 }
 
-async function getDashboardCounts(tenantId: string) {
+async function getDashboardCounts(tenantId: string, includeHeartbeats: boolean) {
+  const hideHeartbeats: SQL | undefined = includeHeartbeats
+    ? undefined
+    : notInArray(events.source, HEARTBEAT_PROVIDER_IDS)
+
   const [
     openResult,
     criticalResult,
@@ -29,7 +35,7 @@ async function getDashboardCounts(tenantId: string) {
     db
       .select({ value: count() })
       .from(events)
-      .where(and(eq(events.tenantId, tenantId), eq(events.status, 'open')))
+      .where(and(eq(events.tenantId, tenantId), eq(events.status, 'open'), hideHeartbeats))
       .then(([result]) => result),
     db
       .select({ value: count() })
@@ -37,7 +43,8 @@ async function getDashboardCounts(tenantId: string) {
       .where(and(
         eq(events.tenantId, tenantId),
         eq(events.severity, 'critical'),
-        not(inArray(events.status, ['resolved', 'dismissed']))
+        not(inArray(events.status, ['resolved', 'dismissed'])),
+        hideHeartbeats
       ))
       .then(([result]) => result),
     db
@@ -78,6 +85,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
     severity: raw.severity,
     category: raw.category,
     status:   raw.status,
+    includeHeartbeats: raw.includeHeartbeats,
   }
 
   const tenantId = await getServerTenantId(slug)
@@ -89,7 +97,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
     currentMonthlyExternalEventCount,
     externalEventsPerMonth,
   } = tenantId
-    ? await getDashboardCounts(tenantId)
+    ? await getDashboardCounts(tenantId, wantsHeartbeats(filters.includeHeartbeats))
     : {
         openCount: 0,
         criticalCount: 0,

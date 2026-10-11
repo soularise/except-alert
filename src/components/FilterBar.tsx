@@ -13,12 +13,14 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { wantsHeartbeats } from '@/lib/providers'
 
 export interface Filters {
   source?: string
   severity?: string
   category?: string
   status?: string
+  includeHeartbeats?: string
 }
 
 interface FilterBarProps {
@@ -62,7 +64,7 @@ export function FilterBar({ filters }: FilterBarProps) {
     router.push('?')
   }
 
-  const hasFilters = !!(filters.source || filters.severity || filters.category || filters.status)
+  const hasFilters = !!(filters.source || filters.severity || filters.category || filters.status || filters.includeHeartbeats)
 
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-border/50 bg-muted/40 px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center">
@@ -117,6 +119,15 @@ export function FilterBar({ filters }: FilterBarProps) {
           <SelectItem value="dismissed">Dismissed</SelectItem>
         </SelectContent>
       </Select>
+
+      <label className="flex items-center gap-2 text-sm text-muted-foreground">
+        <input
+          type="checkbox"
+          checked={wantsHeartbeats(filters.includeHeartbeats)}
+          onChange={(e) => updateParam('includeHeartbeats', e.target.checked ? '1' : '')}
+        />
+        Show heartbeats
+      </label>
 
       {hasFilters && (
         <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">

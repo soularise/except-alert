@@ -17,6 +17,8 @@ export type ProviderDef = {
   hidden?: boolean
   /** Site/system infrastructure only; never set on customer integrations. */
   excludedFromProviderLimit?: true
+  /** Liveness signal for Silence controllers; hidden from default dashboard views and counts. */
+  heartbeat?: true
 }
 
 export const PROVIDERS: ProviderDef[] = [
@@ -228,6 +230,7 @@ export const PROVIDERS: ProviderDef[] = [
   },
   {
     id: 'pi-watchdog-self',
+    heartbeat: true,
     name: 'LAN Watchdog: Observer',
     icon: '📡',
     description: 'Liveness heartbeat from the LAN watchdog itself',
@@ -243,6 +246,7 @@ export const PROVIDERS: ProviderDef[] = [
   },
   {
     id: 'pi-watchdog-m1',
+    heartbeat: true,
     name: 'LAN Watchdog: Host',
     icon: '🖥️',
     description: 'Reachability heartbeat for a LAN host, sent only while the host answers',
@@ -279,6 +283,13 @@ export const PROVIDERS: ProviderDef[] = [
 /** Unsigned delivery is allowed only for secret-optional providers registered without a secret. */
 export function allowsUnsigned(provider: ProviderDef, secret: string): boolean {
   return provider.secretRequired === false && secret.trim() === ''
+}
+
+export const HEARTBEAT_PROVIDER_IDS: string[] = PROVIDERS.filter((p) => p.heartbeat === true).map((p) => p.id)
+
+/** The `includeHeartbeats` query value that turns heartbeat visibility on; `1` and `true` are equivalent everywhere. */
+export function wantsHeartbeats(value: string | null | undefined): boolean {
+  return value === '1' || value === 'true'
 }
 
 export function countsTowardProviderLimit(providerId: string): boolean {

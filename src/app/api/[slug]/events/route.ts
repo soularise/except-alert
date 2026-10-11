@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { and, count, desc, eq, gte, ilike, isNull, lt, not, or } from 'drizzle-orm'
+import { and, count, desc, eq, gte, ilike, isNull, lt, not, notInArray, or } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { events } from '@/lib/db/schema'
 import { evaluateBaselines } from '@/lib/baselines'
 import { requireTenantAccess } from '@/lib/auth-guard'
 import { getMonthlyExternalEventUsage } from '@/lib/event-usage'
 import { limitsFor } from '@/lib/plan-limits'
+import { HEARTBEAT_PROVIDER_IDS, wantsHeartbeats } from '@/lib/providers'
 
 const VALID_SEVERITIES = new Set(['critical', 'error', 'warning', 'info'])
 const VALID_STATUSES = new Set(['open', 'acknowledged', 'resolved', 'dismissed'])
@@ -27,6 +28,7 @@ export async function GET(
   const severity = searchParams.get('severity')
   const category = searchParams.get('category')
   const status = searchParams.get('status')
+  const includeHeartbeats = wantsHeartbeats(searchParams.get('includeHeartbeats'))
   const cursor = searchParams.get('cursor')
   const rawOffset = searchParams.get('offset')
 
@@ -38,6 +40,10 @@ export async function GET(
 
   try {
     const conditions = [eq(events.tenantId, access.tenant.id)]
+    const hideHeartbeats = !includeHeartbeats && !source && !category
+      ? notInArray(events.source, HEARTBEAT_PROVIDER_IDS)
+      : undefined
+    if (hideHeartbeats) conditions.push(hideHeartbeats)
     if (source) conditions.push(ilike(events.source, containsPattern(source)))
     if (severity && VALID_SEVERITIES.has(severity)) conditions.push(eq(events.severity, severity))
     if (category) conditions.push(ilike(events.category, containsPattern(category)))
@@ -89,7 +95,7 @@ export async function GET(
       db
         .select({ value: count() })
         .from(events)
-        .where(and(eq(events.tenantId, access.tenant.id), gte(events.receivedAt, sixtySecondsAgo)))
+        .where(and(eq(events.tenantId, access.tenant.id), gte(events.receivedAt, sixtySecondsAgo), hideHeartbeats))
         .then(([result]) => result),
       getMonthlyExternalEventUsage(access.tenant.id),
     ])
