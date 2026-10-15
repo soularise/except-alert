@@ -6,7 +6,7 @@ export type ProviderDef = {
   icon: string
   description: string
   signatureHeader: string | null
-  signatureAlgorithm: 'stripe' | 'hmac-sha256' | 'raw-sha256' | 'tive' | 'samsara' | 'header-token'
+  signatureAlgorithm: 'stripe' | 'hmac-sha256' | 'hmac-sha1' | 'raw-sha256' | 'tive' | 'samsara' | 'header-token'
   signatureLabel: string
   secretRequired?: boolean
   secretLabel?: string
@@ -216,9 +216,13 @@ export const PROVIDERS: ProviderDef[] = [
     icon: '▲',
     description: 'Deployment lifecycle events (success, error, cancel, promote)',
     signatureHeader: 'x-vercel-signature',
-    signatureAlgorithm: 'hmac-sha256',
-    signatureLabel: 'HMAC-SHA256',
-    docsUrl: 'https://vercel.com/docs/deployments/webhooks',
+    signatureAlgorithm: 'hmac-sha1',
+    signatureLabel: 'HMAC-SHA1',
+    secretLabel: 'Webhook Secret',
+    secretPlaceholder: 'The secret Vercel shows once when you create the webhook',
+    configHelp:
+      'Vercel signs each delivery with HMAC-SHA1 in the x-vercel-signature header. Paste the webhook secret Vercel displays when the webhook is created (an integration webhook uses the integration client secret). Vercel shows it only once.',
+    docsUrl: 'https://vercel.com/docs/webhooks',
     eventCategories: [
       { value: 'deployment.error', label: 'Deployment Error' },
       { value: 'deployment.canceled', label: 'Deployment Canceled' },

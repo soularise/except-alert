@@ -75,3 +75,36 @@ test('contact form provider is not public', () => {
   assert.match(contactBlock, /hidden: true/)
   assert.match(listRoute, /PROVIDERS\.filter\(\(p\) => !p\.hidden\)/)
 })
+
+test('vercel is registered with the documented HMAC-SHA1 signature scheme', () => {
+  const providers = read('src/lib/providers.ts')
+  const vercelBlock = providers.slice(
+    providers.indexOf("id: 'vercel'"),
+    providers.indexOf("id: 'pi-watchdog-self'")
+  )
+
+  assert.notEqual(vercelBlock, '')
+  assert.doesNotMatch(vercelBlock, /hidden: true/)
+  assert.match(vercelBlock, /signatureHeader: 'x-vercel-signature'/)
+  assert.match(vercelBlock, /signatureAlgorithm: 'hmac-sha1'/)
+  assert.match(vercelBlock, /signatureLabel: 'HMAC-SHA1'/)
+  assert.doesNotMatch(vercelBlock, /hmac-sha256/)
+  assert.match(vercelBlock, /shows it only once/)
+  assert.match(providers, /signatureAlgorithm: [^\n]*'hmac-sha1'/)
+  for (const category of ['deployment.error', 'deployment.created', 'deployment.succeeded']) {
+    assert.match(vercelBlock, new RegExp(`value: '${category.replace('.', '\\.')}'`))
+  }
+  // Must equal the types Relay's Vercel template maps (pinned by the same literals in Relay's
+  // provider_onboarding_test.rs). deployment.check-rerequested and the other documented types are
+  // deliberately unsupported.
+  const categories = [...vercelBlock.matchAll(/value: '([^']+)'/g)].map((m) => m[1]).sort()
+  assert.deepEqual(categories, [
+    'deployment.canceled',
+    'deployment.created',
+    'deployment.error',
+    'deployment.promoted',
+    'deployment.ready',
+    'deployment.succeeded',
+  ])
+  assert.doesNotMatch(vercelBlock, /check-rerequested/)
+})

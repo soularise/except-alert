@@ -1,0 +1,54 @@
+# Disposable ER-0065 provider-onboarding stack. Development only; ten-migration Relay profile (no 007).
+# Relay sits on an internal-only network and has no route off this project. Host access to it goes
+# through relay-forward, a socat TCP forwarder that is on both networks and publishes loopback only.
+# Postgres and relay-forward keep outbound capability (no code in them uses it); this is recorded as a
+# limitation, not described as full isolation. Do not start this by hand against anything else.
+name: er0065-onboarding
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: relay
+      POSTGRES_PASSWORD: relay
+      POSTGRES_DB: er0065_onboarding
+    ports:
+      - "127.0.0.1:15434:5432"
+    volumes:
+      - er0065_onboarding_pgdata:/var/lib/postgresql/data
+    networks: [dbnet, hostnet]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U relay -d er0065_onboarding"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: "no"
+
+  relay:
+    image: ${RELAY_IMAGE:?set RELAY_IMAGE to the locally built Relay image tag}
+    environment:
+      DATABASE_URL: postgres://relay:relay@postgres:5432/er0065_onboarding
+      RELAY_PORT: "3800"
+    networks: [dbnet]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  relay-forward:
+    image: alpine/socat:1.8.0.3
+    command: ["TCP-LISTEN:3800,fork,reuseaddr", "TCP:relay:3800"]
+    ports:
+      - "127.0.0.1:13820:3800"
+    networks: [dbnet, hostnet]
+    depends_on:
+      - relay
+    restart: "no"
+
+networks:
+  dbnet:
+    internal: true
+  hostnet: {}
+
+volumes:
+  er0065_onboarding_pgdata:

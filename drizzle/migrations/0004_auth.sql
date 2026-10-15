@@ -54,6 +54,10 @@ CREATE TABLE IF NOT EXISTS tenants (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Relay may have created tenants first without these; make the table match either way.
+ALTER TABLE tenants ALTER COLUMN id SET DEFAULT gen_random_uuid();
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS config JSONB DEFAULT '{}';
+
 CREATE TABLE IF NOT EXISTS tenant_memberships (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     TEXT NOT NULL,

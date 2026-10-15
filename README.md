@@ -52,7 +52,7 @@ cp .env.example .env
 # 2. Start the stack
 docker compose up -d --build
 
-# 3. Apply ExceptAlert migrations (first boot only)
+# 3. Apply ExceptAlert migrations (first boot only). On a fresh Relay-first database use `npm run db:bootstrap` instead (see Migrations)
 docker exec -i except-alert-postgres-1 psql -U relay relay < drizzle/migrations/0001_extend_events.sql
 docker exec -i except-alert-postgres-1 psql -U relay relay < drizzle/migrations/0002_exceptalert_tables.sql
 
@@ -89,6 +89,23 @@ DATABASE_URL=postgres://relay:relay@localhost:5432/relay npm run dev
 | `EXCEPTALERT_ADMIN_TELEGRAM_CHAT_ID` | No | Telegram chat ID for immediate platform-admin upgrade request notifications |
 
 ## Migrations
+
+### Fresh Relay-first database
+
+The one supported way to build a new combined Relay and ExceptAlert database is:
+
+1. Start Relay against an empty database and let it apply its own migrations (it records them in `_sqlx_migrations`). Stop it.
+2. Run the bootstrap against that database:
+
+```bash
+npm run db:bootstrap -- --database-url postgres://user:password@localhost:5432/dbname --expect-database dbname
+```
+
+The bootstrap applies `0001`-`0013` in a fixed order (the two `0012_*` and two `0013_*` files in file-name order). It refuses, before changing anything, unless the database is exactly Relay-migrated (the ledger of the pinned Relay build, 97bc4ce: migrations 1-6 and 8-11, each with the SHA-384 checksum of the pinned migration file; Relay's tables only; no events or audit rows; one default tenant). This is the only supported Relay profile: a Relay database that includes the gitignored `007_event_v1_pilot.sql`, or any other migration set, is refused. It refuses non-local hosts and a database name that differs from `--expect-database`, ignores `.env` files and `DATABASE_URL`, and keeps Relay's default tenant and its `ingress_key`. A failed run leaves earlier files applied: discard the database and rebuild.
+
+It is for fresh databases only. Do not use it on an existing database, and do not rerun `0001`-`0006` against a live one (`0005` drops and recreates the `settings` primary key). Existing databases receive new migrations with `db:apply` below. Validation of this path is `ER0060_CLEANROOM=1 node --test tests/db-bootstrap.integration.test.mjs` (builds a pinned Relay image and creates a disposable `er0060-bootstrap` Docker project).
+
+### Existing databases
 
 Migrations are plain SQL files in `drizzle/migrations/`. They are not applied automatically on container boot. Apply the exact new migration file during deploy before restarting the app:
 
