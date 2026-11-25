@@ -2,29 +2,35 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { PLAN_LABELS, nextUpgradePlans, type UpgradePlan } from '@/lib/plan-limits'
 
 type UpgradeRequestButtonProps = {
   slug: string
   source: string
   prompt: string
-  buttonLabel?: string
-  requestedPlan?: 'pro' | 'growth'
+  currentPlan: string
 }
 
 export function UpgradeRequestButton({
   slug,
   source,
   prompt,
-  buttonLabel = 'Request upgrade',
-  requestedPlan = 'pro',
+  currentPlan,
 }: UpgradeRequestButtonProps) {
+  const plans = nextUpgradePlans(currentPlan)
+  const [requestedPlan, setRequestedPlan] = useState<UpgradePlan | undefined>(plans[0])
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  if (!requestedPlan || plans.length === 0) return null
+
+  const buttonLabel = plans.length > 1 ? 'Request upgrade' : `Request ${PLAN_LABELS[requestedPlan]}`
+
   async function submitRequest() {
+    if (!requestedPlan) return
     setLoading(true)
     setError(null)
     setMessage(null)
@@ -44,7 +50,7 @@ export function UpgradeRequestButton({
 
       setOpen(false)
       setReason('')
-      setMessage('Upgrade request sent. We will follow up with payment details.')
+      setMessage(`${PLAN_LABELS[requestedPlan]} request sent. We will follow up with payment details.`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not submit upgrade request.')
     } finally {
@@ -56,6 +62,22 @@ export function UpgradeRequestButton({
     <div className="mt-3 space-y-2">
       {open ? (
         <div className="space-y-2 rounded-md border border-border/70 bg-background p-3">
+          {plans.length > 1 && (
+            <label className="grid gap-1 text-sm">
+              <span className="font-medium text-foreground">Plan</span>
+              <select
+                value={requestedPlan}
+                onChange={(event) => setRequestedPlan(event.target.value as UpgradePlan)}
+                className="h-9 rounded-md border border-input bg-input/25 px-3 text-sm"
+              >
+                {plans.map((plan) => (
+                  <option key={plan} value={plan}>
+                    {PLAN_LABELS[plan]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="grid gap-1 text-sm">
             <span className="font-medium text-foreground">Upgrade note</span>
             <textarea

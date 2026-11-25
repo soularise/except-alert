@@ -23,7 +23,7 @@ import {
   Boxes,
 } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
-import { limitsFor } from '@/lib/plan-limits'
+import { limitsFor, nextUpgradePlans } from '@/lib/plan-limits'
 import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { PaletteToggle } from '@/components/PaletteToggle'
@@ -44,14 +44,17 @@ type OrganizationOption = {
 function SidebarUsageMeter({
   monthlyUsage,
   plan,
+  base,
 }: {
   monthlyUsage: number
   plan?: string
+  base: string
 }) {
   const limit = limitsFor(plan).externalEventsPerMonth
   const percent =
     limit === null ? 0 : Math.min(100, Math.round((monthlyUsage / limit) * 100))
   const nearLimit = limit !== null && percent >= 80
+  const nextPlans = nextUpgradePlans(plan)
 
   return (
     <div
@@ -72,6 +75,14 @@ function SidebarUsageMeter({
             style={{ width: `${percent}%` }}
           />
         </div>
+      )}
+      {nearLimit && nextPlans.length > 0 && (
+        <Link
+          href={`${base}/settings/account#plan`}
+          className="mt-1.5 inline-block text-xs font-medium text-amber-500 hover:underline"
+        >
+          {nextPlans.length === 1 ? 'Request Growth' : 'Upgrade'}
+        </Link>
       )}
     </div>
   )
@@ -309,6 +320,7 @@ export function AppSidebar({
             <SidebarUsageMeter
               monthlyUsage={monthlyUsage}
               plan={plan}
+              base={base}
             />
           )}
           <Separator className="mb-3 bg-sidebar-border" />

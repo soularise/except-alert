@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { and, count, desc, eq, gte, inArray, sql, type SQL } from 'drizzle-orm'
+import { AdminOrganizationPlanControl } from '@/components/AdminOrganizationPlanControl'
 import { AdminUpgradeRequestActions } from '@/components/AdminUpgradeRequestActions'
 import { AppSidebar } from '@/components/AppSidebar'
 import { Badge } from '@/components/ui/badge'
@@ -495,7 +496,11 @@ export default async function AdminUsagePage({
                       <p className="text-xs text-muted-foreground">{organization.slug}</p>
                     </td>
                     <td className="px-4 py-3">
-                      <Badge variant="secondary">{organization.plan}</Badge>
+                      <AdminOrganizationPlanControl
+                        organizationId={organization.id}
+                        organizationName={organization.name}
+                        plan={organization.plan}
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-medium">{organization.ownerName ?? 'Unknown'}</p>

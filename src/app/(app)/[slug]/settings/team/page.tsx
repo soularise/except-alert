@@ -139,12 +139,15 @@ export default function TeamPage() {
         >
           <p className="font-medium text-foreground">Your current plan includes {memberLimit} member{memberLimit === 1 ? '' : 's'}.</p>
           <p className="mt-1">
-            Free workspaces are single-user. Upgrade to Pro when you are ready to invite teammates.
+            {tenant.plan === 'pro'
+              ? 'Request Growth when you need more members.'
+              : 'Free workspaces are single-user. Upgrade to Pro when you are ready to invite teammates.'}
           </p>
           <UpgradeRequestButton
             slug={tenant.slug}
             source="team_limit"
-            prompt="We want to invite teammates and need Pro."
+            prompt={`We want to invite teammates and need ${tenant.plan === 'pro' ? 'Growth' : 'Pro'}.`}
+            currentPlan={tenant.plan}
           />
         </div>
       ) : (

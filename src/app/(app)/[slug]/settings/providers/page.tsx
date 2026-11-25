@@ -169,14 +169,15 @@ export default function ProvidersPage() {
             <p>
               Your plan includes {providerLimit} configured source{providerLimit === 1 ? '' : 's'}.
               {atProviderLimit
-                ? ' Request Pro when you are ready to monitor more sources.'
+                ? ` Request ${tenant.plan === 'pro' ? 'Growth' : 'Pro'} when you are ready to monitor more sources.`
                 : ' Test events appear in the dashboard and do not count toward monthly usage.'}
             </p>
             {atProviderLimit && canManage && (
               <UpgradeRequestButton
                 slug={tenant.slug}
                 source="source_limit"
-                prompt="We need Pro so we can connect more webhook sources."
+                prompt={`We need ${tenant.plan === 'pro' ? 'Growth' : 'Pro'} so we can connect more webhook sources.`}
+                currentPlan={tenant.plan}
               />
             )}
           </div>
