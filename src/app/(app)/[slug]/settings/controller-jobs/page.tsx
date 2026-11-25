@@ -348,6 +348,7 @@ export default function ControllerJobsPage() {
               slug={tenant.slug}
               source="controller_jobs"
               prompt="We want to use active monitoring and need Pro."
+              currentPlan={tenant.plan}
             />
           )}
         </div>

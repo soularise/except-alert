@@ -43,5 +43,5 @@ test('upgrade request affordance explains manual payment process', () => {
 
   assert.match(button, /Upgrades are reviewed manually/)
   assert.match(button, /send payment details before changing your plan/)
-  assert.match(button, /Upgrade request sent\. We will follow up with payment details\./)
+  assert.match(button, /\$\{PLAN_LABELS\[requestedPlan\]\} request sent\. We will follow up with payment details\./)
 })

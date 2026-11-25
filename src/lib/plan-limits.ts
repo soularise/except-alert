@@ -64,3 +64,22 @@ export function canCreateControllerJob(plan: string | null | undefined, configur
   const limit = limitsFor(plan).controllerJobs
   return limit === null || configuredJobs < limit
 }
+
+export type UpgradePlan = Exclude<Plan, 'free'>
+
+export const PLAN_LABELS: Record<Plan, string> = {
+  free: 'Free',
+  pro: 'Pro',
+  growth: 'Growth',
+}
+
+export function nextUpgradePlans(plan: string | null | undefined): UpgradePlan[] {
+  switch (normalizePlan(plan)) {
+    case 'free':
+      return ['pro', 'growth']
+    case 'pro':
+      return ['growth']
+    case 'growth':
+      return []
+  }
+}
